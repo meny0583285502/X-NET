@@ -4,7 +4,9 @@
   "email": "6183444@gmail.com",
   "registered_at": "2026-06-25T23:27:42.630Z",
   "mode": "whitelist",
-  "allowed_domains": [],
+  "allowed_domains": [
+    "https://gemini.google.com/"
+  ],
   "requests": {
     "pause": null,
     "uninstall_requested": false,
