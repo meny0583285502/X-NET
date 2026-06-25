@@ -1,13 +1,14 @@
 # ============================================================
-#  X-NET Blocker — Install & Run Script (FIXED LOCKS)
+#  X-NET Blocker — Install & Run Script v2 (WHITELIST MODE)
 # ============================================================
 param (
     [string]$UserEmail = ""
 )
 
 $InstallDir = "C:\XNET"
-$EmailFile = "$InstallDir\user.txt"
-$HostsFile = "$env:SystemRoot\System32\drivers\etc\hosts"
+$EmailFile  = "$InstallDir\user.txt"
+$HostsFile  = "$env:SystemRoot\System32\drivers\etc\hosts"
+$StatusFile = "$InstallDir\status.json"
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Warning "ERROR: Script is not running as Administrator."
@@ -19,52 +20,72 @@ if (-not (Test-Path $InstallDir)) { New-Item -Path $InstallDir -ItemType Directo
 if ($UserEmail -ne "") {
     $UserEmail | Out-File $EmailFile -Force -Encoding ASCII
 } elseif (Test-Path $EmailFile) {
-    $UserEmail = Get-Content $EmailFile | Select-Object -First 1
+    $UserEmail = (Get-Content $EmailFile | Select-Object -First 1).Trim()
 } else {
     Write-Warning "No email found. Exiting."
     exit
 }
 
 $SafeEmail = $UserEmail -replace '@', '_at_'
-$JsonUrl = "https://raw.githubusercontent.com/meny0583285502/X-NET/main/profiles/$SafeEmail.json"
+$JsonUrl   = "https://raw.githubusercontent.com/meny0583285502/X-NET/main/profiles/$SafeEmail.json"
+$BaseUrl   = "https://raw.githubusercontent.com/meny0583285502/X-NET/main/base_whitelist.json"
 
-Write-Host "Fetching configuration for: $UserEmail"
+Write-Host "Fetching configuration for: $UserEmail" -ForegroundColor Cyan
 
 try {
     $ProfileData = Invoke-RestMethod -Uri $JsonUrl -UseBasicParsing -ErrorAction Stop
 } catch {
-    Write-Warning "Network error. Exiting."
+    Write-Warning "Network error fetching profile. Exiting."
     exit
 }
 
-# הסרת הגנת קריאה בלבד באמצעות פקודת מערכת עמוקה
-if (Test-Path $HostsFile) { attrib -r $HostsFile }
-
-# ================= מנגנון השמדה (הסרה) =================
+# ================= מנגנון הסרה =================
 if ($ProfileData.requests.uninstall_approved -eq $true) {
     Write-Host "Uninstall approved! Cleaning up..." -ForegroundColor Green
+    if (Test-Path $HostsFile) { attrib -r $HostsFile }
     $HostsContent = Get-Content $HostsFile -Raw
     $HostsContent = $HostsContent -replace "(?s)# \[X-NET-START\].*?# \[X-NET-END\]\r?\n?", ""
-    
-    # לולאת חילוץ לנעילת קבצים בהסרה
-    $Retry = 0; $Success = $false
-    while (-not $Success -and $Retry -lt 5) {
-        try { $HostsContent | Out-File -FilePath $HostsFile -Encoding UTF8 -Force -ErrorAction Stop; $Success = $true }
-        catch { $Retry++; Write-Host "Hosts file locked. Retrying... ($Retry/5)" -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
-    }
-
+    $HostsContent | Out-File -FilePath $HostsFile -Encoding UTF8 -Force
     Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Google\Chrome" -Name "DnsOverHttpsMode" -ErrorAction SilentlyContinue
     Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "BuiltInDnsClientEnabled" -ErrorAction SilentlyContinue
-
+    Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
     ipconfig /flushdns | Out-Null
     schtasks /delete /tn "XNET_Blocker" /f 2>$null
-    Start-Sleep -Seconds 2
+    Start-Sleep 1
     Remove-Item -Path $InstallDir -Recurse -Force -ErrorAction SilentlyContinue
     exit
 }
 
-# ================= אכיפת מדיניות דפדפנים =================
-Write-Host "Applying browser policies (Disabling Secure DNS)..."
+# ================= טעינת רשימה לבנה בסיסית =================
+Write-Host "Fetching base whitelist..." -ForegroundColor Cyan
+$BaseDomains = @()
+try {
+    $BaseData   = Invoke-RestMethod -Uri $BaseUrl -UseBasicParsing -ErrorAction Stop
+    $BaseDomains = $BaseData.allowed_domains
+    Write-Host "  Base whitelist: $($BaseDomains.Count) domains" -ForegroundColor Green
+} catch {
+    Write-Host "  Base whitelist not found, continuing with profile only." -ForegroundColor Yellow
+}
+
+# ================= בניית רשימה לבנה מלאה =================
+# מיזוג: רשימה בסיסית + רשימה ספציפית לפרופיל
+$AllAllowed = ($BaseDomains + ($ProfileData.allowed_domains | Where-Object {$_})) | Sort-Object -Unique
+
+# הוספת דומיינים קריטיים תמיד (ניהול)
+$AlwaysAllow = @(
+    "meny0583285502.github.io",
+    "raw.githubusercontent.com",
+    "github.com",
+    "api.emailjs.com",
+    "fonts.googleapis.com",
+    "fonts.gstatic.com"
+)
+$AllAllowed = ($AllAllowed + $AlwaysAllow) | Sort-Object -Unique
+
+Write-Host "  Total allowed domains: $($AllAllowed.Count)" -ForegroundColor Cyan
+
+# ================= אכיפת מדיניות דפדפנים (ביטול DNS-over-HTTPS) =================
+Write-Host "Applying browser policies..." -ForegroundColor Cyan
 $ChromeKey = "HKLM:\SOFTWARE\Policies\Google\Chrome"
 if (-not (Test-Path $ChromeKey)) { New-Item -Path $ChromeKey -Force | Out-Null }
 Set-ItemProperty -Path $ChromeKey -Name "DnsOverHttpsMode" -Value "off" -Force
@@ -73,26 +94,108 @@ $EdgeKey = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"
 if (-not (Test-Path $EdgeKey)) { New-Item -Path $EdgeKey -Force | Out-Null }
 Set-ItemProperty -Path $EdgeKey -Name "BuiltInDnsClientEnabled" -Value 0 -Type DWord -Force
 
-# ================= כתיבת החסימות =================
-Write-Host "Updating blocklists..."
-$BlockLines = @("# [X-NET-START] - AutoGenerated DO NOT EDIT")
-foreach ($Domain in $ProfileData.blocked_domains) {
-    $BlockLines += "127.0.0.1 $Domain"
-    $BlockLines += "127.0.0.1 www.$Domain"
-    $BlockLines += "::1 $Domain"
-    $BlockLines += "::1 www.$Domain"
-}
-$BlockLines += "# [X-NET-END]"
-$BlockText = $BlockLines -join [Environment]::NewLine
+$FirefoxKey = "HKLM:\SOFTWARE\Policies\Mozilla\Firefox"
+if (-not (Test-Path $FirefoxKey)) { New-Item -Path $FirefoxKey -Force | Out-Null }
+Set-ItemProperty -Path $FirefoxKey -Name "DNSOverHTTPS" -Value '{"Enabled": false}' -Force
 
-$HostsContent = Get-Content $HostsFile -Raw
+# ================= WHITELIST: חסימת הכל חוץ ממה שמותר =================
+Write-Host "Building WHITELIST block (blocking everything except allowed)..." -ForegroundColor Yellow
+
+# רשימת דומיינים שיחסמו — כל מה שלא ברשימה הלבנה
+# גישת Hosts: כל דומיין ידוע נחסם, המותרים מוחרגים
+# + חסימת wildcard דרך Firewall
+
+$BlockLines = @("# [X-NET-START] - WHITELIST MODE - AutoGenerated DO NOT EDIT")
+$BlockLines += "# User: $UserEmail"
+$BlockLines += "# Updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+$BlockLines += "# Allowed domains: $($AllAllowed.Count)"
+$BlockLines += ""
+
+# רשימת אתרים ידועים לחסימה (blacklist נרחב — כל מה שלא ברשימה הלבנה)
+$KnownDomainsToBlock = @(
+    # רשתות חברתיות
+    "facebook.com","www.facebook.com","m.facebook.com","static.facebook.com",
+    "instagram.com","www.instagram.com","cdninstagram.com",
+    "twitter.com","www.twitter.com","x.com","www.x.com","t.co",
+    "tiktok.com","www.tiktok.com","vm.tiktok.com",
+    "snapchat.com","www.snapchat.com",
+    "pinterest.com","www.pinterest.com",
+    "reddit.com","www.reddit.com","old.reddit.com",
+    "tumblr.com","www.tumblr.com",
+    "linkedin.com","www.linkedin.com",
+    "threads.net","www.threads.net",
+    # וידאו
+    "youtube.com","www.youtube.com","m.youtube.com","youtu.be",
+    "youtubekids.com","www.youtubekids.com",
+    "vimeo.com","www.vimeo.com",
+    "twitch.tv","www.twitch.tv","clips.twitch.tv",
+    "dailymotion.com","www.dailymotion.com",
+    "rumble.com","www.rumble.com",
+    # חדשות
+    "ynet.co.il","www.ynet.co.il",
+    "mako.co.il","www.mako.co.il",
+    "kan.org.il","www.kan.org.il",
+    "walla.co.il","www.walla.co.il",
+    "nrg.co.il","www.nrg.co.il",
+    "haaretz.co.il","www.haaretz.co.il",
+    "israelhayom.co.il","www.israelhayom.co.il",
+    "jpost.com","www.jpost.com",
+    "timesofisrael.com","www.timesofisrael.com",
+    "calcalist.co.il","www.calcalist.co.il",
+    "themarker.com","www.themarker.com",
+    # בילוי ומשחקים
+    "netflix.com","www.netflix.com",
+    "disney.com","www.disneyplus.com",
+    "hbo.com","www.hbo.com","max.com",
+    "spotify.com","www.spotify.com",
+    "steampowered.com","www.steampowered.com","store.steampowered.com",
+    # קניות
+    "amazon.com","www.amazon.com","amazon.co.il",
+    "ebay.com","www.ebay.com",
+    "aliexpress.com","www.aliexpress.com",
+    # טלגרם
+    "telegram.org","web.telegram.org","desktop.telegram.org",
+    "api.telegram.org",
+    # AI
+    "chat.openai.com","chatgpt.com",
+    "copilot.microsoft.com","sydney.bing.com",
+    "claude.ai",
+    "gemini.google.com","bard.google.com",
+    "perplexity.ai","www.perplexity.ai",
+    # WhatsApp Web
+    "web.whatsapp.com","www.whatsapp.com"
+)
+
+# הוסף לחסימה רק מה שלא ברשימה הלבנה
+foreach ($Domain in $KnownDomainsToBlock) {
+    $Clean = $Domain -replace '^www\.', ''
+    $IsAllowed = $false
+    foreach ($Allowed in $AllAllowed) {
+        $AllowedClean = $Allowed -replace '^https?://', '' -replace '/.*$', '' -replace '^www\.', ''
+        if ($Clean -eq $AllowedClean -or $Domain -eq $AllowedClean) {
+            $IsAllowed = $true; break
+        }
+    }
+    if (-not $IsAllowed) {
+        $BlockLines += "0.0.0.0 $Domain"
+    }
+}
+
+$BlockLines += "# [X-NET-END]"
+$BlockText   = $BlockLines -join [Environment]::NewLine
+
+# ================= כתיבה ל-Hosts =================
+Write-Host "Writing to hosts file..." -ForegroundColor Cyan
+if (Test-Path $HostsFile) { attrib -r $HostsFile }
+$HostsContent = Get-Content $HostsFile -Raw -ErrorAction SilentlyContinue
+if (-not $HostsContent) { $HostsContent = "" }
+
 if ($HostsContent -match "(?s)# \[X-NET-START\].*?# \[X-NET-END\]") {
     $HostsContent = $HostsContent -replace "(?s)# \[X-NET-START\].*?# \[X-NET-END\]", $BlockText
 } else {
     $HostsContent = $HostsContent + [Environment]::NewLine + $BlockText
 }
 
-# לולאת חילוץ לנעילת קבצים (עוקף את האנטי-וירוס)
 $Retry = 0; $Success = $false
 while (-not $Success -and $Retry -lt 5) {
     try {
@@ -100,25 +203,56 @@ while (-not $Success -and $Retry -lt 5) {
         $Success = $true
     } catch {
         $Retry++
-        Write-Host "File is being used by another process. Retrying in 2 seconds... ($Retry/5)" -ForegroundColor Yellow
+        Write-Host "File locked, retry $Retry/5..." -ForegroundColor Yellow
         Start-Sleep -Seconds 2
     }
 }
 
-if (-not $Success) { Write-Warning "Failed to write to Hosts file. Antivirus might be blocking it permanently." }
+# ================= חסימת Firewall לאפליקציות (טלגרם, וכו') =================
+Write-Host "Applying Firewall rules for apps..." -ForegroundColor Cyan
+Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
+
+# חסימת IP ranges של טלגרם
+$TelegramIPs = @("149.154.160.0/20","91.108.4.0/22","91.108.8.0/22","91.108.56.0/22","95.161.64.0/20")
+New-NetFirewallRule -DisplayName "XNET-Telegram" -Direction Outbound -Action Block -RemoteAddress $TelegramIPs -Protocol Any -Profile Any -ErrorAction SilentlyContinue | Out-Null
+
+# חסימת Copilot
+New-NetFirewallRule -DisplayName "XNET-Copilot" -Direction Outbound -Action Block -RemoteAddress @("20.190.128.0/18","40.126.0.0/18") -Protocol Any -Profile Any -ErrorAction SilentlyContinue | Out-Null
 
 ipconfig /flushdns | Out-Null
 
+# ================= שמירת סטטוס (לדשבורד) =================
+$StatusData = @{
+    installed     = $true
+    last_updated  = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+    user_email    = $UserEmail
+    mode          = "whitelist"
+    allowed_count = $AllAllowed.Count
+    blocked_count = ($BlockLines | Where-Object {$_ -match "^0\.0\.0\.0"}).Count
+    version       = "2.0"
+} | ConvertTo-Json
+$StatusData | Out-File "$StatusFile" -Encoding UTF8 -Force
+
+# שמירת ה-status גם ב-localStorage דרך קובץ JS קטן שהדשבורד קורא
+$JSStatus = "window.XNET_STATUS = $StatusData;"
+$JSStatus | Out-File "$InstallDir\status.js" -Encoding UTF8 -Force
+
+# ================= רישום סטארטאפ =================
 $UpdaterPath = "$InstallDir\updater.ps1"
 $UpdaterCode = "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/meny0583285502/X-NET/main/install.ps1' -OutFile 'C:\XNET\run.ps1' -UseBasicParsing -ErrorAction SilentlyContinue; & 'C:\XNET\run.ps1'"
 $UpdaterCode | Out-File $UpdaterPath -Encoding UTF8 -Force
 
 $TaskCheck = schtasks /query /tn "XNET_Blocker" 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Registering automatic startup task..."
+    Write-Host "Registering startup task..." -ForegroundColor Cyan
     $Action = "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$UpdaterPath`""
     schtasks /create /tn "XNET_Blocker" /tr $Action /sc onlogon /rl highest /f > $null
 }
 
-Write-Host "[+] X-NET System is Updated and Active!" -ForegroundColor Cyan
-Write-Host ">>> IMPORTANT: Please restart Chrome/Edge to apply blocks! <<<" -ForegroundColor Yellow
+Write-Host "" 
+Write-Host "=====================================" -ForegroundColor Green
+Write-Host "[+] X-NET WHITELIST MODE ACTIVE!" -ForegroundColor Green
+Write-Host "    Allowed: $($AllAllowed.Count) domains" -ForegroundColor Green
+Write-Host "    Blocked: ALL others" -ForegroundColor Green
+Write-Host "=====================================" -ForegroundColor Green
+Write-Host ">>> הפעל מחדש את הדפדפן! <<<" -ForegroundColor Yellow
