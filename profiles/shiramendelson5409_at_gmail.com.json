@@ -5,7 +5,8 @@
   "registered_at": "2026-06-25T21:34:04.985Z",
   "mode": "blacklist",
   "allowed_domains": [
-    "https://meny0583285502.github.io/X-NET/"
+    "https://meny0583285502.github.io/X-NET/",
+    "https://mail.google.com/"
   ],
   "blocked_domains": [
     "facebook.com",
