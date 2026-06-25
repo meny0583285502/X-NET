@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NetBlocker Portal</title>
+    <title>X-NET Portal</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { 
@@ -49,10 +49,10 @@
         .btn-block { width: 100%; }
         .btn-primary { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; }
         .btn-danger { background: #dc2626; color: white; }
-        .btn-google { background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-secondary { background: #334155; color: #cbd5e1; }
         .btn-success { background: #16a34a; color: white; }
         .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Dashboard & Admin layout */
         .status-badge { display: inline-block; padding: 4px 12px; border-radius: 99px; font-size: 0.8rem; font-weight: bold; margin-bottom: 15px; }
@@ -71,14 +71,17 @@
         .alert { padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 12px; }
         .alert-info { background: #1e3a5f; color: #93c5fd; border: 1px solid #3b82f6; }
         .alert-success { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
-        .alert-warn { background: #451a03; color: #fcd34d; border: 1px solid #b45309; }
+        .alert-error { background: #450a0a; color: #fca5a5; border: 1px solid #b91c1c; }
 
-        /* Admin Table */
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; }
         th, td { text-align: right; padding: 10px; border-bottom: 1px solid #334155; }
         th { color: #94a3b8; }
         .action-btns { display: flex; gap: 5px; }
         .btn-sm { padding: 4px 8px; font-size: 0.75rem; }
+
+        /* Loader */
+        .loader { border: 3px solid #334155; border-top: 3px solid #60a5fa; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -88,9 +91,12 @@
     <div id="view-register" class="view">
         <div class="header">
             <div class="icon">🛡️</div>
-            <div class="title">NetBlocker</div>
+            <div class="title">X-NET Blocker</div>
             <div class="subtitle">מערכת סינון וניהול גלישה אישית</div>
         </div>
+        
+        <div id="regAlert" class="alert" style="display:none;"></div>
+
         <div class="field">
             <label>שם מלא</label>
             <input type="text" id="regName" placeholder="ישראל ישראלי">
@@ -109,7 +115,7 @@
             <input type="password" id="adminPassword" placeholder="הכנס קוד גישה">
         </div>
 
-        <button class="btn btn-primary btn-block" onclick="processRegistration()">⚡ הרשמה והורדת סקריפט התקנה</button>
+        <button id="regBtn" class="btn btn-primary btn-block" onclick="processRegistration()">⚡ הרשמה והורדת סקריפט התקנה</button>
     </div>
 
     <div id="view-dashboard" class="view">
@@ -123,64 +129,28 @@
 
         <div class="tabs">
             <div class="tab active" onclick="switchTab('tab-sites', this)">🌐 אתרים מורשים</div>
-            <div class="tab" onclick="switchTab('tab-request', this)">📩 בקשות מנהל</div>
-            <div class="tab" onclick="switchTab('tab-pause', this)">⏳ השהיית חסימה</div>
-            <div class="tab" onclick="switchTab('tab-update', this)">🆕 עדכון תוכנה</div>
-            <div class="tab" onclick="switchTab('tab-uninstall', this)">🗑️ הסרה</div>
+            <div class="tab" onclick="switchTab('tab-request', this)">📩 בקשות</div>
+            <div class="tab" onclick="switchTab('tab-update', this)">🆕 עדכון</div>
         </div>
 
         <div id="tab-sites" class="panel active">
             <h3 style="font-size:0.95rem; margin-bottom:10px; color:#93c5fd;">רשימת אתרים פתוחים כרגע:</h3>
             <ul id="allowedSitesList">
-                <li class="highlight">https://meny0583285502.github.io/LAVAN/ (שרת תצורה)</li>
-                <li>Gmail & Google Services</li>
-                <li>בנקים ואתרי ממשלה בישראל</li>
+                <li class="highlight">https://meny0583285502.github.io/X-NET/</li>
+                <li>טוען נתונים מהשרת...</li>
             </ul>
         </div>
 
         <div id="tab-request" class="panel">
-            <div class="alert alert-info">כדי לשלוח הודעה ישירה מהמייל שלך, מומלץ לחבר את חשבון הגוגל.</div>
-            <button class="btn btn-google btn-block" onclick="connectGoogle()">🔵 התחברות עם חשבון Google</button>
-            <div style="margin: 15px 0; border-top: 1px solid #334155;"></div>
             <div class="field">
                 <label>כתובת האתר לפתיחה</label>
                 <input type="text" id="reqUrl" placeholder="https://example.com">
             </div>
-            <div class="field">
-                <label>סיבת הבקשה</label>
-                <textarea id="reqReason" style="height:60px;" placeholder="לצורך עבודה / לימודים..."></textarea>
-            </div>
-            <button class="btn btn-primary btn-block" onclick="sendSiteRequest()">שלח בקשת פתיחה למנהל</button>
-        </div>
-
-        <div id="tab-pause" class="panel">
-            <div class="field">
-                <label>זמן השהייה מבוקש</label>
-                <select id="pauseTime">
-                    <option value="15">15 דקות</option>
-                    <option value="30">30 דקות</option>
-                    <option value="60">שעה אחת</option>
-                </select>
-            </div>
-            <div class="field">
-                <label>סיבה להשבתה זמנית</label>
-                <input type="text" id="pauseReason" placeholder="עדכון תוכנה דחוף וכדומה">
-            </div>
-            <button class="btn btn-primary btn-block" onclick="sendPauseRequest()">שלח בקשת השהייה</button>
+            <button class="btn btn-primary btn-block" onclick="alert('בקשת אתר תישלח למנהל בהמשך')">שלח בקשה</button>
         </div>
 
         <div id="tab-update" class="panel">
-            <div class="alert alert-info">כאן תוכל להוריד ולהריץ את גרסת הסקריפט האחרונה ביותר משרת הניהול ישירות למחשב.</div>
-            <div style="background:#0f172a; padding:12px; border-radius:6px; margin-bottom:15px; font-size:0.85rem;">
-                <p>גרסה מקומית: <span style="color:#a8a29e;">מזוהה לפי התקנה</span></p>
-                <p>גרסת שרת עדכנית: <span style="color:#60a5fa; font-weight:bold;">1.0.0</span></p>
-            </div>
-            <button class="btn btn-success btn-block" onclick="triggerSoftwareUpdate()">⬇️ הורד והפעל עדכון תוכנה</button>
-        </div>
-
-        <div id="tab-uninstall" class="panel">
-            <div class="alert alert-info" id="uninstallStatusMsg">הסרת התוכנה מחייבת אישור דיגיטלי מוקדם מהמנהל בשרת.</div>
-            <button class="btn btn-danger btn-block" id="uninstallBtn" onclick="triggerUninstall()" disabled>הסר תוכנה מהמחשב</button>
+            <button class="btn btn-success btn-block" onclick="alert('מוריד גרסה אחרונה...')">⬇️ הורד והפעל עדכון תוכנה</button>
         </div>
     </div>
 
@@ -195,81 +165,69 @@
 
         <div class="tabs">
             <div class="tab active" onclick="switchAdminTab('admin-users', this)">👥 משתמשים ופרופילים</div>
-            <div class="tab" onclick="switchAdminTab('admin-requests', this)">📩 בקשות ממתינות</div>
-            <div class="tab" onclick="switchAdminTab('admin-global', this)">⚙️ הגדרות גלובליות</div>
+            <div class="tab" onclick="switchAdminTab('admin-settings', this)">⚙️ הגדרות</div>
         </div>
 
         <div id="admin-users" class="panel active">
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <input type="text" id="adminSearchUser" placeholder="חפש לפי שם או אימייל..." style="padding:8px;">
+            <div id="adminLoading" style="text-align:center; padding:20px; color:#94a3b8;">
+                <div class="loader"></div> טוען רשימת משתמשים מ-GitHub...
             </div>
-            <table>
+            <table id="usersTable" style="display:none;">
                 <thead>
                     <tr>
                         <th>שם משתמש</th>
-                        <th>אימייל</th>
-                        <th>סטטוס</th>
-                        <th>פעולות ניהול</th>
+                        <th>אימייל / מזהה</th>
+                        <th>פעולות</th>
                     </tr>
                 </thead>
                 <tbody id="adminUsersTableBody">
-                    <tr>
-                        <td>ישראל ישראלי (הדמיה)</td>
-                        <td>israel@gmail.com</td>
-                        <td><span style="color:#86efac;">פעיל</span></td>
-                        <td class="action-btns">
-                            <button class="btn btn-primary btn-sm" onclick="alert('עריכת רשימת אתרים חסומים/מותרים למשתמש זה')">📝 ערוך</button>
-                            <button class="btn btn-success btn-sm" onclick="alert('אושר קובץ הסרה למשתמש זה בשרת')">🔓 אשר הסרה</button>
-                        </td>
-                    </tr>
-                </tbody>
+                    </tbody>
             </table>
         </div>
 
-        <div id="admin-requests" class="panel">
-            <h3 style="font-size:0.95rem; margin-bottom:10px; color:#fcd34d;">בקשות פתיחה והשבתה של משתמשי קצה:</h3>
-            <div class="alert alert-warn">אין בקשות חדשות הממתינות לאישור כרגע.</div>
-        </div>
-
-        <div id="admin-global" class="panel">
-            <div class="field">
-                <label>גרסת מערכת נוכחית להפצה</label>
-                <input type="text" value="1.0.0" id="adminGlobalVersion">
-            </div>
-            <button class="btn btn-primary btn-block" onclick="alert('הגרסה הגלובלית עודכנה בשרת')">שמור והפץ עדכון גרסה</button>
+        <div id="admin-settings" class="panel">
+            <p style="color:#94a3b8; font-size:0.9rem;">הגדרות מערכת גלובליות ייבנו כאן.</p>
         </div>
     </div>
 
 </div>
 
 <script>
+    // ================= הגדרות שרת ו-API =================
     const ADMIN_EMAIL = "meny85502@gmail.com";
     const ADMIN_PASS = "5502";
+    
+    // פרטי ה-Repository החדש
+    const GITHUB_OWNER = "meny0583285502";
+    const GITHUB_REPO = "X-NET";
+    
+    // חובה להכניס כאן את הטוקן שלך מגיטהאב!
+    const GITHUB_TOKEN = "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN"; 
+
+    // פונקציות עזר לקידוד תקין של עברית ל-Base64
+    function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
+    function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
+
     let currentUserEmail = "";
 
     window.onload = function() {
-        // האזנה לשדה האימייל כדי להקפיץ שדה סיסמה אם המנהל מקליד את המייל שלו
         document.getElementById('regEmail').addEventListener('input', function(e) {
             const emailValue = e.target.value.trim().toLowerCase();
             const passwordFrame = document.getElementById('adminPasswordFrame');
-            if (emailValue === ADMIN_EMAIL.toLowerCase()) {
-                passwordFrame.style.display = "block";
-            } else {
-                passwordFrame.style.display = "none";
-            }
+            passwordFrame.style.display = (emailValue === ADMIN_EMAIL.toLowerCase()) ? "block" : "none";
         });
 
-        // בדיקה אם המחשב פתח את הדפדפן עם פרמטר זיהוי
         const urlParams = new URLSearchParams(window.location.search);
         const userParam = urlParams.get('user');
 
         if (userParam) {
-            loadUserSession(userParam);
+            loadUserDashboard(userParam);
         } else {
             showView('view-register');
         }
     };
 
+    // ================= ניהול תצוגה =================
     function showView(viewId) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById(viewId).classList.add('active');
@@ -289,62 +247,147 @@
         document.getElementById(panelId).classList.add('active');
     }
 
-    function processRegistration() {
+    function showAlert(msg, type = 'error') {
+        const alertEl = document.getElementById('regAlert');
+        alertEl.style.display = 'block';
+        alertEl.className = `alert alert-${type}`;
+        alertEl.innerText = msg;
+    }
+
+    // ================= לוגיקת רישום משתמש (API) =================
+    async function processRegistration() {
         const name = document.getElementById('regName').value.trim();
         const phone = document.getElementById('regPhone').value.trim();
         const email = document.getElementById('regEmail').value.trim();
-        const passwordInput = document.getElementById('adminPassword').value.trim();
+        const pass = document.getElementById('adminPassword').value.trim();
+        const btn = document.getElementById('regBtn');
 
-        if (!email) { alert("נא להזין אימייל"); return; }
+        if (!email) { showAlert("נא להזין אימייל"); return; }
 
-        // בדיקת כניסת מנהל
+        // כניסת מנהל
         if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-            if (passwordInput === ADMIN_PASS) {
+            if (pass === ADMIN_PASS) {
                 showView('view-admin');
+                loadAdminData(); // טעינת משתמשים
             } else {
-                alert("❌ קוד מנהל שגוי! הגישה נחסמה.");
+                showAlert("קוד מנהל שגוי!");
             }
             return;
         }
 
-        if (!name || !phone) { alert("נא למלא שם וטלפון תקינים להרשמה"); return; }
+        if (!name || !phone) { showAlert("נא למלא שם וטלפון"); return; }
 
-        loadUserSession(email, name);
-        downloadInstallerScript(email, name, phone);
+        btn.disabled = true;
+        btn.innerHTML = '<div class="loader"></div> שומר נתונים בשרת...';
+
+        const safeEmail = email.replace('@', '_at_');
+        const filePath = `profiles/${safeEmail}.json`;
+
+        // אובייקט ה-JSON שיישמר בגיטהאב
+        const userData = {
+            name: name,
+            phone: phone,
+            email: email,
+            registered_at: new Date().toISOString(),
+            mode: "blacklist",
+            allowed_domains: ["https://meny0583285502.github.io/X-NET/"],
+            blocked_domains: ["facebook.com", "youtube.com"]
+        };
+
+        try {
+            const contentBase64 = utf8_to_b64(JSON.stringify(userData, null, 2));
+            
+            const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: `New user registration: ${name}`,
+                    content: contentBase64
+                })
+            });
+
+            if (!response.ok && response.status !== 422) { // 422 אומר שהקובץ כבר קיים, נתייחס כהצלחה לצורך העניין
+                throw new Error("שגיאה בשמירת הנתונים ב-GitHub. ודא שהטוקן תקין.");
+            }
+
+            showAlert("הפרופיל נוצר בהצלחה! מוריד התקנה...", "success");
+            
+            // הורדת סקריפט התקנה
+            setTimeout(() => {
+                downloadInstallerScript(email, name, phone);
+                loadUserDashboard(email);
+            }, 1500);
+
+        } catch (error) {
+            showAlert(error.message);
+            btn.disabled = false;
+            btn.innerText = '⚡ הרשמה והורדת סקריפט התקנה';
+        }
     }
 
-    function loadUserSession(email, name = "משתמש") {
+    // ================= אזור אישי =================
+    function loadUserDashboard(email) {
         currentUserEmail = email;
-        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-            showView('view-admin');
-            return;
-        }
-
-        document.getElementById('dashWelcome').innerText = `שלום, ${name}`;
+        document.getElementById('dashWelcome').innerText = `שלום, ${email.split('@')[0]}`;
         document.getElementById('userDisplayEmail').innerText = `מזהה מערכת: ${email}`;
         showView('view-dashboard');
+        
+        // כאן נוכל בהמשך למשוך את ה-JSON שלו ולהציג את רשימת האתרים המעודכנת
+    }
+
+    // ================= פאנל ניהול משיכת נתונים (API) =================
+    async function loadAdminData() {
+        try {
+            const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/profiles`, {
+                headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+            });
+
+            if (!response.ok) throw new Error("לא ניתן לגשת לתיקיית profiles");
+
+            const files = await response.json();
+            const tbody = document.getElementById('adminUsersTableBody');
+            tbody.innerHTML = '';
+
+            if(files.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">אין משתמשים רשומים עדיין</td></tr>';
+            } else {
+                files.forEach(file => {
+                    if(file.name.endsWith('.json')) {
+                        const emailDisplay = file.name.replace('_at_', '@').replace('.json', '');
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><span style="color:#e2e8f0;">משתמש מערכת</span></td>
+                                <td style="color:#60a5fa;">${emailDisplay}</td>
+                                <td class="action-btns">
+                                    <button class="btn btn-secondary btn-sm" onclick="window.open('${file.html_url}', '_blank')">JSON ב-GitHub</button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+            }
+
+            document.getElementById('adminLoading').style.display = 'none';
+            document.getElementById('usersTable').style.display = 'table';
+
+        } catch (error) {
+            document.getElementById('adminLoading').innerHTML = `<span style="color:#fca5a5;">${error.message}</span>`;
+        }
     }
 
     function downloadInstallerScript(email, name, phone) {
-        const batContent = `@echo off\nchcp 65001 >nul\necho [NetBlocker] מתחיל התקנה...\npowershell -Command "Invoke-WebRequest -Uri 'https://meny0583285502.github.io/LAVAN/install.ps1' -OutFile 'C:\\install.ps1'; & 'C:\\install.ps1' -UserEmail '${email}' -UserName '${name}' -UserPhone '${phone}'"\npause`;
+        const batContent = `@echo off\nchcp 65001 >nul\necho [X-NET] מתחיל התקנה...\npowershell -Command "Invoke-WebRequest -Uri 'https://meny0583285502.github.io/X-NET/install.ps1' -OutFile 'C:\\install.ps1'; & 'C:\\install.ps1' -UserEmail '${email}'"\npause`;
         const blob = new Blob([batContent], { type: 'text/plain' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `NetBlocker_Setup.bat`;
+        a.download = `XNET_Setup.bat`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
     }
-
-    function triggerSoftwareUpdate() {
-        alert("מוריד את הגרסה האחרונה של סקריפט הריצה ומפעיל מחדש את החסימות המעודכנות...");
-        // כאן בהמשך נשים את פקודת ההורדה של ה-startup.ps1 או ה-blocker.ps1 העדכני ביותר
-    }
-
-    function connectGoogle() { alert("חיבור לחשבון גוגל יופעל בשלב הבא."); }
-    function sendSiteRequest() { alert("בקשת האתר נשלחה."); }
-    function sendPauseRequest() { alert("בקשת ההשהיה נשלחה."); }
-    function triggerUninstall() { alert("הסרת התוכנה הופעלה."); }
 </script>
 </body>
 </html>
