@@ -9,6 +9,12 @@ $InstallDir = "C:\XNET"
 $EmailFile = "$InstallDir\user.txt"
 $HostsFile = "$env:SystemRoot\System32\drivers\etc\hosts"
 
+# Check for Admin privileges explicitly
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Warning "ERROR: Script is not running as Administrator. UAC prompt might have been cancelled."
+    exit
+}
+
 # 1. Create working directory and save user identity
 if (-not (Test-Path $InstallDir)) {
     New-Item -Path $InstallDir -ItemType Directory -Force | Out-Null
@@ -36,14 +42,18 @@ try {
     exit
 }
 
+# Remove ReadOnly attribute from Hosts file forcefully to prevent Access Denied
+if (Test-Path $HostsFile) {
+    Set-ItemProperty -Path $HostsFile -Name IsReadOnly -Value $false -ErrorAction SilentlyContinue
+}
+
 # 3. Self-Destruct Mechanism (Uninstall)
 if ($ProfileData.requests.uninstall_approved -eq $true) {
     Write-Host "[+] Uninstall approved! Cleaning up system..." -ForegroundColor Green
     
-    # Remove blocklist from Hosts file
     $HostsContent = Get-Content $HostsFile -Raw
     $HostsContent = $HostsContent -replace "(?s)# \[X-NET-START\].*?# \[X-NET-END\]\r?\n?", ""
-    $HostsContent | Set-Content $HostsFile -Encoding UTF8
+    $HostsContent | Set-Content $HostsFile -Encoding UTF8 -Force
 
     ipconfig /flushdns | Out-Null
     schtasks /delete /tn "XNET_Blocker" /f 2>$null
@@ -71,12 +81,13 @@ if ($HostsContent -match "(?s)# \[X-NET-START\].*?# \[X-NET-END\]") {
 } else {
     $HostsContent = $HostsContent + [Environment]::NewLine + $BlockText
 }
-$HostsContent | Set-Content $HostsFile -Encoding UTF8
 
-# Flush DNS cache so blocks apply immediately
+# Write forcefully
+$HostsContent | Set-Content $HostsFile -Encoding UTF8 -Force
+
 ipconfig /flushdns | Out-Null
 
-# 6. Register Scheduled Task (if it doesn't exist)
+# 6. Register Scheduled Task
 $TaskCheck = schtasks /query /tn "XNET_Blocker" 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Registering automatic startup task..."
