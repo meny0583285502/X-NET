@@ -13,6 +13,7 @@
     "youtube.com"
   ],
   "requests": {
-    "pause": null
+    "pause": null,
+    "uninstall_approved": true
   }
 }
