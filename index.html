@@ -136,6 +136,7 @@
 
         <div class="tabs">
             <div class="tab active" onclick="switchTab('tab-sites', this)">🌐 אתרים מורשים</div>
+            <div class="tab" onclick="switchTab('tab-request', this)">📩 בקשות</div>
             <div class="tab" onclick="switchTab('tab-pause', this)">⏳ השהיה</div>
             <div class="tab" onclick="switchTab('tab-uninstall', this)">🗑️ הסרה</div>
         </div>
@@ -145,6 +146,19 @@
             <ul id="userAllowedSitesList" class="domain-list">
                 <li>טוען נתונים מהשרת... <div class="loader" style="width:12px;height:12px;border-width:2px;"></div></li>
             </ul>
+        </div>
+
+        <div id="tab-request" class="panel">
+            <div class="alert alert-info">מלא את הפרטים ולחץ על שליחה. ייפתח לך המייל לשליחה ישירה למנהל המערכת.</div>
+            <div class="field">
+                <label>כתובת האתר לפתיחה</label>
+                <input type="text" id="reqUrl" placeholder="https://example.com">
+            </div>
+            <div class="field">
+                <label>סיבת הבקשה</label>
+                <textarea id="reqReason" placeholder="תאר מדוע אתה צריך גישה לאתר זה..."></textarea>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="sendSiteRequestEmail()">שלח בקשת פתיחה למנהל</button>
         </div>
 
         <div id="tab-pause" class="panel">
@@ -178,6 +192,10 @@
                 <button class="btn btn-secondary btn-sm" onclick="location.reload()">🔒 התנתק</button>
             </div>
             <p class="subtitle" style="text-align: right;">מנהל מחובר: meny85502@gmail.com</p>
+        </div>
+
+        <div id="adminTabs" class="tabs">
+            <div class="tab active" onclick="switchAdminTab('admin-users', this)">👥 משתמשים ופרופילים</div>
         </div>
 
         <div id="admin-users" class="panel active" style="padding: 0; border: none; background: transparent;">
@@ -227,15 +245,13 @@
     const GITHUB_OWNER = "meny0583285502";
     const GITHUB_REPO = "X-NET";
     
-    // חיתוך הטוקן שלך כדי לחמוק מחסימה אוטומטית של גיטהאב (Secret Scanning)
+    // חיתוך הטוקן כדי לחמוק מחסימה אוטומטית של גיטהאב
     const GITHUB_TOKEN = ["ghp_", "PuFjv7joXh", "Tc5LLsZ71R", "RCtVzf6Vw80WFkIE"].join(""); 
 
-    // משתנים גלובליים
     let currentUserEmail = "";
     let currentUserData = null;
     let currentUserFileSha = "";
 
-    // פונקציות קידוד Unicode למניעת שיבוש אותיות בעברית ב-JSON
     function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
     function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
 
@@ -263,6 +279,13 @@
     function switchTab(panelId, tabEl) {
         document.querySelectorAll('#view-dashboard .tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('#view-dashboard .panel').forEach(p => p.classList.remove('active'));
+        tabEl.classList.add('active');
+        document.getElementById(panelId).classList.add('active');
+    }
+
+    function switchAdminTab(panelId, tabEl) {
+        document.querySelectorAll('#view-admin .tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('#view-admin .panel').forEach(p => p.classList.remove('active'));
         tabEl.classList.add('active');
         document.getElementById(panelId).classList.add('active');
     }
@@ -296,7 +319,7 @@
         });
         if (!res.ok) throw new Error("שגיאה בעדכון הנתונים בשרת");
         const responseData = await res.json();
-        return responseData.content.sha; // מחזיר SHA מעודכן
+        return responseData.content.sha;
     }
 
     // ================= לוגיקת רישום =================
@@ -309,7 +332,6 @@
 
         if (!email) { uiAlert('regAlert', "נא להזין אימייל"); return; }
 
-        // כניסת מנהל
         if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             if (pass === ADMIN_PASS) {
                 showView('view-admin');
@@ -360,8 +382,9 @@
         }
     }
 
+    // פונקציית הורדה מעודכנת (משתמשת בתיקיית TEMP ודורשת הרשאת מנהל)
     function downloadInstallerScript(email, name) {
-        const batContent = `@echo off\nchcp 65001 >nul\necho [X-NET] מתחיל התקנה...\npowershell -Command "Invoke-WebRequest -Uri 'https://meny0583285502.github.io/X-NET/install.ps1' -OutFile 'C:\\install.ps1'; & 'C:\\install.ps1' -UserEmail '${email}'"\npause`;
+        const batContent = `@echo off\nchcp 65001 >nul\necho [X-NET] מבקש הרשאות מנהל ומתחיל התקנה...\npowershell -Command "Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -Command \\"Invoke-WebRequest -Uri ''https://meny0583285502.github.io/X-NET/install.ps1'' -OutFile ''$env:TEMP\\install.ps1''; & ''$env:TEMP\\install.ps1'' -UserEmail ''${email}''\\"' -Verb RunAs"\n`;
         const blob = new Blob([batContent], { type: 'text/plain' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -385,14 +408,12 @@
             document.getElementById('dashWelcome').innerText = `שלום, ${currentUserData.name}`;
             document.getElementById('userDisplayEmail').innerText = `מזהה מערכת: ${email}`;
             
-            // רינדור רשימת אתרים
             const ul = document.getElementById('userAllowedSitesList');
             ul.innerHTML = '';
             currentUserData.allowed_domains.forEach(domain => {
                 ul.innerHTML += `<li>${domain}</li>`;
             });
 
-            // בדיקת סטטוס הסרה
             if (currentUserData.requests && currentUserData.requests.uninstall_approved) {
                 document.getElementById('btnUserUninstallApprove').disabled = false;
                 document.getElementById('uninstallInfoMsg').className = "alert alert-success";
@@ -402,6 +423,20 @@
         } catch (error) {
             uiAlert('userDashAlert', "שגיאה בטעינת הנתונים מגיטהאב.", "error");
         }
+    }
+
+    // שליחת אימייל למנהל
+    function sendSiteRequestEmail() {
+        const url = document.getElementById('reqUrl').value.trim();
+        const reason = document.getElementById('reqReason').value.trim();
+        
+        if (!url) { alert("נא להזין כתובת אתר."); return; }
+
+        const subject = encodeURIComponent(`בקשת פתיחת אתר למשתמש: ${currentUserEmail}`);
+        const body = encodeURIComponent(`שלום מנהל,\n\nאבקש לפתוח את האתר הבא:\nכתובת: ${url}\n\nסיבת הבקשה:\n${reason}\n\nתודה!`);
+        
+        window.location.href = `mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}`;
+        alert("פותח את תוכנת המייל שלך לשליחת הבקשה...");
     }
 
     async function userRequestPause() {
@@ -452,12 +487,27 @@
             const tbody = document.getElementById('adminUsersTableBody');
             tbody.innerHTML = '';
             
-            files.forEach(file => {
+            let pendingRequestsCount = 0;
+            
+            for (const file of files) {
                 if(file.name.endsWith('.json')) {
                     const email = file.name.replace('_at_', '@').replace('.json', '');
+                    
+                    const userJsonRes = await fetch(file.url, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
+                    const userDataRaw = await userJsonRes.json();
+                    const userData = JSON.parse(b64_to_utf8(userDataRaw.content));
+                    
+                    let alertIcon = "";
+                    if (userData.requests) {
+                        if (userData.requests.pause || (userData.requests.uninstall_requested && !userData.requests.uninstall_approved)) {
+                            alertIcon = " ⚠️";
+                            pendingRequestsCount++;
+                        }
+                    }
+
                     tbody.innerHTML += `
                         <tr>
-                            <td>משתמש</td>
+                            <td>משתמש ${alertIcon}</td>
                             <td style="color:#60a5fa;">${email}</td>
                             <td class="action-btns">
                                 <button class="btn btn-primary btn-sm" onclick="adminOpenUser('${email}')">⚙️ ניהול</button>
@@ -465,7 +515,15 @@
                         </tr>
                     `;
                 }
-            });
+            }
+            
+            const adminTab = document.querySelector('.tab[onclick*="admin-users"]');
+            if (pendingRequestsCount > 0) {
+                adminTab.innerHTML = `👥 משתמשים <span style="background:red; color:white; border-radius:50%; padding:2px 6px; font-size:0.7rem;">${pendingRequestsCount}</span>`;
+            } else {
+                adminTab.innerHTML = `👥 משתמשים ופרופילים`;
+            }
+
             document.getElementById('adminLoading').style.display = 'none';
             document.getElementById('usersTable').style.display = 'table';
         } catch (error) {
@@ -488,16 +546,19 @@
             document.getElementById('editUserName').innerText = `ניהול: ${currentUserData.name}`;
             alertsDiv.innerHTML = '';
 
-            // התראות על בקשות
             if(currentUserData.requests) {
                 if(currentUserData.requests.pause) {
-                    alertsDiv.innerHTML += `<div class="alert alert-warn">⏳ המשתמש ביקש השהיה ל-${currentUserData.requests.pause.time} דקות. סיבה: ${currentUserData.requests.pause.reason}</div>`;
+                    alertsDiv.innerHTML += `
+                        <div class="alert alert-warn" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <span>⏳ בקשת השהיה ל-${currentUserData.requests.pause.time} דקות. סיבה: ${currentUserData.requests.pause.reason}</span>
+                            <button class="btn btn-success btn-sm" onclick="adminApprovePause()">אשר ונקה בקשה</button>
+                        </div>`;
                 }
                 if(currentUserData.requests.uninstall_requested && !currentUserData.requests.uninstall_approved) {
                     alertsDiv.innerHTML += `
                         <div class="alert alert-error" style="display:flex; justify-content:space-between; align-items:center;">
                             <span>🗑️ המשתמש שלח בקשת הסרה מהמחשב!</span>
-                            <button class="btn btn-danger btn-sm" onclick="adminApproveUninstall()">אשר הסרה</button>
+                            <button class="btn btn-danger btn-sm" onclick="adminApproveUninstall()">אשר הסרה סופית</button>
                         </div>`;
                 }
             }
@@ -531,11 +592,23 @@
         await saveAdminChanges("Removed domain " + removed[0]);
     }
 
+    async function adminApprovePause() {
+        if(confirm("האם למחוק את בקשת ההשהיה ולאשר למשתמש? (כדי שהמחשב שלו ידע על זה, נוסיף בהמשך קריאה במחשב עצמו)")) {
+            currentUserData.requests.pause = null;
+            await saveAdminChanges("Admin cleared pause request");
+            adminOpenUser(currentAdminEditingEmail);
+            loadAdminData();
+        }
+    }
+
     async function adminApproveUninstall() {
-        if(!currentUserData.requests) currentUserData.requests = {};
-        currentUserData.requests.uninstall_approved = true;
-        await saveAdminChanges("Admin approved uninstall");
-        adminOpenUser(currentAdminEditingEmail); // ריענון התצוגה
+        if(confirm("האם לאשר את הסרת התוכנה מהמחשב של המשתמש?")) {
+            if(!currentUserData.requests) currentUserData.requests = {};
+            currentUserData.requests.uninstall_approved = true;
+            await saveAdminChanges("Admin approved uninstall");
+            adminOpenUser(currentAdminEditingEmail);
+            loadAdminData();
+        }
     }
 
     async function saveAdminChanges(msg) {
