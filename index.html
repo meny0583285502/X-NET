@@ -54,6 +54,7 @@
 
 <div class="container">
 
+    <!-- ================= מסך הרשמה / התקנה ================= -->
     <div id="view-register" class="view active">
         <div class="header">
             <div class="icon">🛡️</div>
@@ -65,7 +66,10 @@
 
         <div class="field"><label>שם מלא</label><input type="text" id="regName" placeholder="ישראל ישראלי"></div>
         <div class="field"><label>מספר טלפון</label><input type="text" id="regPhone" placeholder="050-1234567"></div>
-        <div class="field"><label>כתובת אימייל (המזהה שלך)</label><input type="email" id="regEmail" placeholder="israel@gmail.com"></div>
+        <div class="field">
+            <label>כתובת אימייל (המזהה שלך)</label>
+            <input type="text" id="regEmail" placeholder="israel@gmail.com (או קיצור דרך למנהל)">
+        </div>
 
         <div class="field" id="adminPasswordFrame" style="display: none;">
             <label style="color: #f59e0b;">🛡️ קוד אימות מנהל מערכת</label>
@@ -75,6 +79,7 @@
         <button id="regBtn" class="btn btn-primary btn-block" onclick="processRegistration()">⚡ הרשמה והורדת סקריפט התקנה</button>
     </div>
 
+    <!-- ================= מסך אזור אישי ================= -->
     <div id="view-dashboard" class="view">
         <div class="header" style="text-align: right;">
             <div style="display:flex; justify-content: space-between; align-items: center;">
@@ -101,11 +106,12 @@
             <ul id="userAllowedSitesList" class="domain-list"><li>טוען נתונים מהשרת... <div class="loader"></div></li></ul>
         </div>
 
+        <!-- בקשת אתר משולבת -->
         <div id="tab-request" class="panel">
-            <div class="alert alert-info">מלא את הפרטים ולחץ על שליחה. ייפתח לך ה-Gmail לשליחה ישירה למנהל.</div>
+            <div class="alert alert-info">בקשתך תירשם במערכת הניהול, ומיד לאחר מכן ייפתח ה-Gmail שלך לשליחת התראה למנהל.</div>
             <div class="field"><label>כתובת האתר לפתיחה</label><input type="text" id="reqUrl" placeholder="https://example.com"></div>
             <div class="field"><label>סיבת הבקשה</label><textarea id="reqReason" placeholder="תאר מדוע אתה צריך גישה..."></textarea></div>
-            <button class="btn btn-primary btn-block" onclick="sendSiteRequestEmail()">📧 פתח Gmail לשליחת בקשה</button>
+            <button id="btnUserReqSite" class="btn btn-primary btn-block" onclick="sendSiteRequestBoth()">📝 שלח בקשה (מערכת + אימייל)</button>
         </div>
 
         <div id="tab-pause" class="panel">
@@ -120,10 +126,11 @@
             <div id="uninstallInfoMsg" class="alert alert-info">הסרת התוכנה מחייבת אישור דיגיטלי מוקדם מהמנהל בשרת.</div>
             <button id="btnUserReqUninstall" class="btn btn-warn btn-block" onclick="userRequestUninstall()">בקש אישור הסרה מהמנהל</button>
             <div style="margin: 15px 0; border-top: 1px solid #334155;"></div>
-            <button id="btnUserUninstallApprove" class="btn btn-danger btn-block" onclick="alert('מפעיל סקריפט הסרה מקומי במחשב...')" disabled>הסר תוכנה מהמחשב</button>
+            <button id="btnUserUninstallApprove" class="btn btn-danger btn-block" onclick="alert('הורד והפעל שוב את קובץ ההתקנה כדי שהתוכנה תמחק את עצמה כעת.')" disabled>הסר תוכנה מהמחשב</button>
         </div>
     </div>
 
+    <!-- ================= מסך פאנל ניהול ================= -->
     <div id="view-admin" class="view">
         <div class="header" style="text-align: right;">
             <div style="display:flex; justify-content: space-between; align-items: center;">
@@ -144,6 +151,7 @@
                 <tbody id="adminUsersTableBody"></tbody>
             </table>
 
+            <!-- חלון ניהול משתמש ספציפי -->
             <div id="adminUserModal">
                 <div style="display:flex; justify-content: space-between; margin-bottom: 15px;">
                     <h3 style="color:#60a5fa;" id="editUserName">עריכת משתמש</h3>
@@ -191,9 +199,11 @@
     function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
 
     window.onload = function() {
+        // קיצור דרך למנהל
         document.getElementById('regEmail').addEventListener('input', function(e) {
             const emailValue = e.target.value.trim().toLowerCase();
-            document.getElementById('adminPasswordFrame').style.display = (emailValue === ADMIN_EMAIL.toLowerCase()) ? "block" : "none";
+            const isAdmin = emailValue === ADMIN_EMAIL.toLowerCase() || emailValue === "5502";
+            document.getElementById('adminPasswordFrame').style.display = isAdmin ? "block" : "none";
         });
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -203,10 +213,9 @@
             localStorage.setItem('xnet_user_email', userParam);
             loadUserDashboard(userParam);
         } else {
-            // בדיקה אם המשתמש התחבר בעבר ונשמר בדפדפן
             const savedUser = localStorage.getItem('xnet_user_email');
             if(savedUser) {
-                if(savedUser.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
+                if(savedUser.toLowerCase() === ADMIN_EMAIL.toLowerCase() || savedUser === "5502"){
                     showView('view-admin'); 
                     loadAdminData();
                 } else {
@@ -276,15 +285,16 @@
     async function processRegistration() {
         const name = document.getElementById('regName').value.trim();
         const phone = document.getElementById('regPhone').value.trim();
-        const email = document.getElementById('regEmail').value.trim();
+        let email = document.getElementById('regEmail').value.trim();
         const pass = document.getElementById('adminPassword').value.trim();
         const btn = document.getElementById('regBtn');
 
-        if (!email) { uiAlert('regAlert', "נא להזין אימייל"); return; }
+        if (!email) { uiAlert('regAlert', "נא להזין אימייל או קוד מנהל"); return; }
         
-        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        // כניסת מנהל משודרגת
+        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || email === "5502") {
             if (pass === ADMIN_PASS) { 
-                localStorage.setItem('xnet_user_email', email);
+                localStorage.setItem('xnet_user_email', ADMIN_EMAIL);
                 showView('view-admin'); 
                 loadAdminData(); 
             } else { uiAlert('regAlert', "קוד מנהל שגוי!"); }
@@ -302,7 +312,7 @@
             mode: "blacklist",
             allowed_domains: ["https://meny0583285502.github.io/X-NET/"],
             blocked_domains: ["facebook.com", "youtube.com"],
-            requests: { pause: null, uninstall_requested: false, uninstall_approved: false }
+            requests: { pause: null, uninstall_requested: false, uninstall_approved: false, site_request: null }
         };
 
         try {
@@ -316,7 +326,7 @@
             });
             if (!response.ok && response.status !== 422) throw new Error("שגיאה בשמירה. ודא טוקן.");
 
-            localStorage.setItem('xnet_user_email', email); // שמירה בדפדפן
+            localStorage.setItem('xnet_user_email', email); 
             uiAlert('regAlert', "הפרופיל נוצר בהצלחה! מוריד התקנה...", "success");
             setTimeout(() => { downloadInstallerScript(email, name); loadUserDashboard(email); }, 1500);
         } catch (error) {
@@ -377,13 +387,31 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
         } catch (error) { uiAlert('userDashAlert', "שגיאה בטעינת הנתונים מגיטהאב.", "error"); }
     }
 
-    function sendSiteRequestEmail() {
+    // בקשה משולבת: שומרת במערכת + פותחת אימייל
+    async function sendSiteRequestBoth() {
         const url = document.getElementById('reqUrl').value.trim();
         const reason = document.getElementById('reqReason').value.trim();
         if (!url) { alert("נא להזין כתובת אתר."); return; }
-        const subject = encodeURIComponent(`בקשת פתיחת אתר - ממשתמש: ${currentUserEmail}`);
-        const body = encodeURIComponent(`שלום מנהל X-NET,\n\nאבקש לפתוח את האתר הבא:\nכתובת: ${url}\n\nסיבת הבקשה:\n${reason}\n\nתודה!`);
-        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${ADMIN_EMAIL}&su=${subject}&body=${body}`, '_blank');
+
+        const btn = document.getElementById('btnUserReqSite');
+        btn.disabled = true; btn.innerText = "שומר בקשה במערכת...";
+
+        if(!currentUserData.requests) currentUserData.requests = {};
+        currentUserData.requests.site_request = { url: url, reason: reason, date: new Date().toISOString() };
+
+        try {
+            currentUserFileSha = await updateUserJson(currentUserEmail, currentUserData, currentUserFileSha, "User requested new site");
+            uiAlert('userDashAlert', "בקשתך נרשמה במערכת בהצלחה! פותח אימייל...", "success");
+            
+            const subject = encodeURIComponent(`בקשת פתיחת אתר - ממשתמש: ${currentUserEmail}`);
+            const body = encodeURIComponent(`שלום מנהל X-NET,\n\nאבקש לפתוח את האתר הבא:\nכתובת: ${url}\n\nסיבת הבקשה:\n${reason}\n\nתודה!`);
+            window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${ADMIN_EMAIL}&su=${subject}&body=${body}`, '_blank');
+            
+            document.getElementById('reqUrl').value = '';
+            document.getElementById('reqReason').value = '';
+        } catch(e) { uiAlert('userDashAlert', "שגיאה בשמירת הבקשה: " + e.message); }
+        
+        btn.disabled = false; btn.innerText = "📝 שלח בקשה (מערכת + אימייל)";
     }
 
     async function userRequestPause() {
@@ -439,7 +467,7 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
                     const userData = JSON.parse(b64_to_utf8(userDataRaw.content));
                     
                     let alertIcon = "";
-                    if (userData.requests && (userData.requests.pause || (userData.requests.uninstall_requested && !userData.requests.uninstall_approved))) {
+                    if (userData.requests && (userData.requests.pause || userData.requests.site_request || (userData.requests.uninstall_requested && !userData.requests.uninstall_approved))) {
                         alertIcon = " ⚠️"; pendingReqs++;
                     }
 
@@ -470,6 +498,12 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
             alertsDiv.innerHTML = '';
 
             if(currentUserData.requests) {
+                if(currentUserData.requests.site_request) {
+                    alertsDiv.innerHTML += `<div class="alert alert-info" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span>🌐 מבקש לפתוח: <b>${currentUserData.requests.site_request.url}</b><br>סיבה: ${currentUserData.requests.site_request.reason}</span>
+                        <div><button class="btn btn-primary btn-sm" onclick="adminApproveSiteRequest('${currentUserData.requests.site_request.url}')">הוסף וסגור</button>
+                        <button class="btn btn-secondary btn-sm" onclick="adminDismissSiteRequest()">דחה</button></div></div>`;
+                }
                 if(currentUserData.requests.pause) {
                     alertsDiv.innerHTML += `<div class="alert alert-warn" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span>⏳ בקשת השהיה ל-${currentUserData.requests.pause.time} דק'. סיבה: ${currentUserData.requests.pause.reason}</span><button class="btn btn-success btn-sm" onclick="adminApprovePause()">אשר ונקה בקשה</button></div>`;
                 }
@@ -501,6 +535,21 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
         const removed = currentUserData.allowed_domains.splice(index, 1);
         renderAdminDomainList();
         await saveAdminChanges("Removed domain " + removed[0]);
+    }
+
+    async function adminApproveSiteRequest(url) {
+        currentUserData.allowed_domains.push(url);
+        currentUserData.requests.site_request = null;
+        await saveAdminChanges("Admin approved new site");
+        adminOpenUser(currentAdminEditingEmail);
+        loadAdminData();
+    }
+
+    async function adminDismissSiteRequest() {
+        currentUserData.requests.site_request = null;
+        await saveAdminChanges("Admin dismissed site request");
+        adminOpenUser(currentAdminEditingEmail);
+        loadAdminData();
     }
 
     async function adminApprovePause() {
