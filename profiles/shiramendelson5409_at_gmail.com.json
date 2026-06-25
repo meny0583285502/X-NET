@@ -11,5 +11,12 @@
   "blocked_domains": [
     "facebook.com",
     "youtube.com"
-  ]
+  ],
+  "requests": {
+    "pause": {
+      "time": "15",
+      "reason": "",
+      "date": "2026-06-25T21:46:11.502Z"
+    }
+  }
 }
