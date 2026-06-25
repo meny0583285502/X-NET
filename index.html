@@ -79,7 +79,10 @@
         <div class="header" style="text-align: right;">
             <div style="display:flex; justify-content: space-between; align-items: center;">
                 <h2 id="dashWelcome" style="font-size: 1.3rem; color: #60a5fa;">שלום, משתמש</h2>
-                <span class="status-badge status-active">🛡️ מוגן ומסונן</span>
+                <div style="display:flex; gap: 10px; align-items:center;">
+                    <button class="btn btn-secondary btn-sm" onclick="logoutSession()">התנתק</button>
+                    <span class="status-badge status-active">🛡️ מוגן ומסונן</span>
+                </div>
             </div>
             <p class="subtitle" id="userDisplayEmail" style="text-align: right;"></p>
         </div>
@@ -125,7 +128,7 @@
         <div class="header" style="text-align: right;">
             <div style="display:flex; justify-content: space-between; align-items: center;">
                 <h2 style="font-size: 1.4rem; color: #f59e0b;">👑 פאנל ניהול ראשי</h2>
-                <button class="btn btn-secondary btn-sm" onclick="location.reload()">🔒 התנתק</button>
+                <button class="btn btn-secondary btn-sm" onclick="logoutSession()">🔒 התנתק</button>
             </div>
             <p class="subtitle" style="text-align: right;">מנהל מחובר: meny85502@gmail.com</p>
         </div>
@@ -197,11 +200,28 @@
         const userParam = urlParams.get('user');
 
         if (userParam) {
+            localStorage.setItem('xnet_user_email', userParam);
             loadUserDashboard(userParam);
         } else {
-            showView('view-register');
+            // בדיקה אם המשתמש התחבר בעבר ונשמר בדפדפן
+            const savedUser = localStorage.getItem('xnet_user_email');
+            if(savedUser) {
+                if(savedUser.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
+                    showView('view-admin'); 
+                    loadAdminData();
+                } else {
+                    loadUserDashboard(savedUser);
+                }
+            } else {
+                showView('view-register');
+            }
         }
     };
+
+    function logoutSession() {
+        localStorage.removeItem('xnet_user_email');
+        location.reload();
+    }
 
     function showView(viewId) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -261,11 +281,16 @@
         const btn = document.getElementById('regBtn');
 
         if (!email) { uiAlert('regAlert', "נא להזין אימייל"); return; }
+        
         if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-            if (pass === ADMIN_PASS) { showView('view-admin'); loadAdminData(); } 
-            else { uiAlert('regAlert', "קוד מנהל שגוי!"); }
+            if (pass === ADMIN_PASS) { 
+                localStorage.setItem('xnet_user_email', email);
+                showView('view-admin'); 
+                loadAdminData(); 
+            } else { uiAlert('regAlert', "קוד מנהל שגוי!"); }
             return;
         }
+
         if (!name || !phone) { uiAlert('regAlert', "נא למלא שם וטלפון"); return; }
 
         btn.disabled = true;
@@ -291,6 +316,7 @@
             });
             if (!response.ok && response.status !== 422) throw new Error("שגיאה בשמירה. ודא טוקן.");
 
+            localStorage.setItem('xnet_user_email', email); // שמירה בדפדפן
             uiAlert('regAlert', "הפרופיל נוצר בהצלחה! מוריד התקנה...", "success");
             setTimeout(() => { downloadInstallerScript(email, name); loadUserDashboard(email); }, 1500);
         } catch (error) {
@@ -299,7 +325,6 @@
         }
     }
 
-    // פונקציית הורדה חסינת-שגיאות המשתמשת בקידוד Base64 להרצת ה-PowerShell
     function downloadInstallerScript(email, name) {
         const psScript = `
 Write-Host "X-NET Setup System" -ForegroundColor Cyan
@@ -352,15 +377,12 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
         } catch (error) { uiAlert('userDashAlert', "שגיאה בטעינת הנתונים מגיטהאב.", "error"); }
     }
 
-    // שליחת אימייל למנהל דרך ממשק הרשת של Gmail (יפתח לשונית חדשה מוכנה לשליחה)
     function sendSiteRequestEmail() {
         const url = document.getElementById('reqUrl').value.trim();
         const reason = document.getElementById('reqReason').value.trim();
         if (!url) { alert("נא להזין כתובת אתר."); return; }
-
         const subject = encodeURIComponent(`בקשת פתיחת אתר - ממשתמש: ${currentUserEmail}`);
         const body = encodeURIComponent(`שלום מנהל X-NET,\n\nאבקש לפתוח את האתר הבא:\nכתובת: ${url}\n\nסיבת הבקשה:\n${reason}\n\nתודה!`);
-        
         window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${ADMIN_EMAIL}&su=${subject}&body=${body}`, '_blank');
     }
 
@@ -481,7 +503,6 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
         await saveAdminChanges("Removed domain " + removed[0]);
     }
 
-    // פעולות מנהל לניקוי בקשות ואישורן
     async function adminApprovePause() {
         if(confirm("למחוק את הבקשה הממתינה?")) {
             currentUserData.requests.pause = null;
@@ -501,7 +522,6 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
         }
     }
 
-    // פעולות מנהל אקטיביות (יזומות ללא בקשה)
     async function adminTriggerPause() {
         const mins = document.getElementById('adminInitiatedPause').value;
         if(!mins) { alert("הכנס מספר דקות"); return; }
