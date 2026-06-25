@@ -6,7 +6,8 @@
   "mode": "blacklist",
   "allowed_domains": [
     "https://meny0583285502.github.io/X-NET/",
-    "https://mail.google.com/"
+    "https://mail.google.com/",
+    "https://gemini.google.com/"
   ],
   "blocked_domains": [
     "facebook.com",
