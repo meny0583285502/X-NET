@@ -1,0 +1,14 @@
+{
+  "name": "אלעזר",
+  "phone": "0",
+  "email": "6183444@gmail.com",
+  "registered_at": "2026-06-25T23:27:42.630Z",
+  "mode": "whitelist",
+  "allowed_domains": [],
+  "requests": {
+    "pause": null,
+    "uninstall_requested": false,
+    "uninstall_approved": false,
+    "site_request": null
+  }
+}
