@@ -5,7 +5,8 @@
   "registered_at": "2026-06-25T23:27:42.630Z",
   "mode": "whitelist",
   "allowed_domains": [
-    "https://gemini.google.com/"
+    "https://gemini.google.com/",
+    "https://claude.ai/"
   ],
   "requests": {
     "pause": null,
