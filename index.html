@@ -218,8 +218,13 @@
     function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
     function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
 
+    // פונקציית העזר לניקוי דומיינים מ-http ומשאריות נתיבים
+    function formatDomain(input) {
+        if (!input) return "";
+        return input.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split('/')[0].split('?')[0].trim();
+    }
+
     window.onload = function() {
-        // קיצור דרך למנהל
         document.getElementById('regEmail').addEventListener('input', function(e) {
             const emailValue = e.target.value.trim().toLowerCase();
             const isAdmin = emailValue === ADMIN_EMAIL.toLowerCase() || emailValue === "5502";
@@ -232,7 +237,6 @@
         const allowedCnt = urlParams.get('allowed');
         const resolved   = urlParams.get('resolved');
 
-        // Script redirects here after install with ?installed=1
         if (installed === '1' && userParam) {
             localStorage.setItem('xnet_install_status', JSON.stringify({
                 installed: true,
@@ -241,7 +245,6 @@
                 resolved: resolved || '?'
             }));
             history.replaceState({}, '', window.location.pathname + '?user=' + encodeURIComponent(userParam));
-            // Show install success banner
             setTimeout(() => {
                 const b = document.createElement('div');
                 b.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#14532d;color:#86efac;border:1px solid #22c55e;border-radius:10px;padding:12px 24px;font-size:0.9rem;font-weight:700;z-index:9999;direction:rtl';
@@ -333,7 +336,6 @@
 
         if (!email) { uiAlert('regAlert', "נא להזין אימייל או קוד מנהל"); return; }
         
-        // כניסת מנהל משודרגת
         if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || email === "5502") {
             if (pass === ADMIN_PASS) { 
                 localStorage.setItem('xnet_user_email', ADMIN_EMAIL);
@@ -351,9 +353,9 @@
         const userData = {
             name: name, phone: phone, email: email,
             registered_at: new Date().toISOString(),
-            mode: "blacklist",
-            allowed_domains: ["https://meny0583285502.github.io/X-NET/"],
-            blocked_domains: ["facebook.com", "youtube.com"],
+            mode: "whitelist", // עודכן למצב הרשימה הלבנה החדש
+            allowed_domains: ["meny0583285502.github.io"], // תמיד שומר על הדומיין של המערכת פתוח ובלי קידומות
+            blocked_domains: [],
             requests: { pause: null, uninstall_requested: false, uninstall_approved: false, site_request: null }
         };
 
@@ -430,7 +432,6 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
         } catch (error) { uiAlert('userDashAlert', "שגיאה בטעינת הנתונים מגיטהאב.", "error"); }
     }
 
-    // בקשה משולבת: שומרת במערכת + פותחת אימייל
     function checkInstallStatus() {
         const raw = localStorage.getItem('xnet_install_status');
         const badge   = document.getElementById('installBadge');
@@ -461,8 +462,12 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
         const url = document.getElementById('reqUrl').value.trim();
         const reason = document.getElementById('reqReason').value.trim();
         if (!url) { alert("נא להזין כתובת אתר."); return; }
+        
+        // מנקה את כתובת האתר לפני השמירה בשרת!
+        const cleanUrl = formatDomain(url);
+        
         if(!currentUserData.requests) currentUserData.requests = {};
-        currentUserData.requests.site_request = { url: url, reason: reason, date: new Date().toISOString() };
+        currentUserData.requests.site_request = { url: cleanUrl, reason: reason, date: new Date().toISOString() };
         try {
             currentUserFileSha = await updateUserJson(currentUserEmail, currentUserData, currentUserFileSha, "User requested new site");
             document.getElementById('reqDone').style.display='block';
@@ -475,8 +480,12 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
         const url = document.getElementById('reqUrl').value.trim();
         const reason = document.getElementById('reqReason').value.trim();
         if (!url) { alert("נא להזין כתובת אתר."); return; }
-        const sub  = encodeURIComponent(`בקשת פתיחת אתר: ${url}`);
-        const body = encodeURIComponent(`שלום,\n\nאני מבקש לפתוח את האתר:\n${url}\n\nסיבה: ${reason}\n\nמשתמש: ${currentUserEmail}`);
+        
+        // מנקה את כתובת האתר גם בשליחה במייל
+        const cleanUrl = formatDomain(url);
+        
+        const sub  = encodeURIComponent(`בקשת פתיחת אתר: ${cleanUrl}`);
+        const body = encodeURIComponent(`שלום,\n\nאני מבקש לפתוח את האתר:\n${cleanUrl}\n\nסיבה: ${reason}\n\nמשתמש: ${currentUserEmail}`);
         window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=${sub}&body=${body}`, '_blank');
         document.getElementById('reqDone').style.display='block';
     }
@@ -595,8 +604,12 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
 
     async function adminAddDomain() {
         const input = document.getElementById('newDomainInput');
-        const newDomain = input.value.trim();
-        if(!newDomain) return;
+        const rawDomain = input.value.trim();
+        if(!rawDomain) return;
+        
+        // מנקה את הכתובת כשהמנהל מכניס אותה ידנית
+        const newDomain = formatDomain(rawDomain);
+        
         currentUserData.allowed_domains.push(newDomain);
         renderAdminDomainList();
         input.value = '';
@@ -610,9 +623,14 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
     }
 
     async function adminApproveSiteRequest(url) {
-        currentUserData.allowed_domains.push(url);
+        // מנקה את הכתובת שוב בשלב האישור למקרה שזה פרופיל ישן ששמר כתובת מלוכלכת
+        const cleanUrl = formatDomain(url);
+        
+        if (!currentUserData.allowed_domains.includes(cleanUrl)) {
+            currentUserData.allowed_domains.push(cleanUrl);
+        }
         currentUserData.requests.site_request = null;
-        await saveAdminChanges("Admin approved new site");
+        await saveAdminChanges("Admin approved new site: " + cleanUrl);
         adminOpenUser(currentAdminEditingEmail);
         loadAdminData();
     }
