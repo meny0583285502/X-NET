@@ -175,7 +175,8 @@ foreach ($line in $HostLines) { $block.Add($line) }
 $block.Add("")
 $block.Add("# [/XNET]")
 
-$existing = (Get-Content $HOSTS -Raw -ErrorAction SilentlyContinue) ?? ""
+$existing = Get-Content $HOSTS -Raw -ErrorAction SilentlyContinue
+if (-not $existing) { $existing = "" }
 $existing = $existing -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?", ""
 $final = $existing.TrimEnd() + "`r`n" + ($block -join "`r`n")
 
@@ -232,7 +233,8 @@ Write-Host "[8] Startup task..." -ForegroundColor Yellow
 $updater = "$DIR\updater.ps1"
 "try { Invoke-WebRequest '$GH_RAW/install.ps1' -OutFile '$DIR\run.ps1' -UseBasicParsing; & '$DIR\run.ps1' } catch { & '$DIR\run.ps1' -ErrorAction SilentlyContinue }" | Out-File $updater -Encoding UTF8 -Force
 
-if ((schtasks /query /tn "XNET_Blocker" 2>$null; $LASTEXITCODE) -ne 0) {
+schtasks /query /tn "XNET_Blocker" 2>$null | Out-Null
+if ($LASTEXITCODE -ne 0) {
     schtasks /create /tn "XNET_Blocker" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$updater`"" /sc onlogon /rl highest /f 2>$null | Out-Null
     Write-Host "    Task created" -ForegroundColor Green
 } else {
@@ -261,4 +263,5 @@ Write-Host " Block Google search: $blockGoogle"   -ForegroundColor Green
 Write-Host "=====================================" -ForegroundColor Green
 Write-Host " RESTART YOUR BROWSER NOW"            -ForegroundColor Yellow
 Write-Host ""
+Start-Process "https://meny0583285502.github.io/X-NET/?user=$UserEmail&installed=1&allowed=$($Allowed.Count)&resolved=$ok"
 Read-Host "Press Enter to close"
