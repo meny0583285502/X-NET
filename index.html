@@ -87,6 +87,8 @@
                 <div style="display:flex; gap: 10px; align-items:center;">
                     <button class="btn btn-secondary btn-sm" onclick="logoutSession()">התנתק</button>
                     <span class="status-badge status-active">🛡️ מוגן ומסונן</span>
+                    <span id="installBadge" style="display:none;background:#1e3a5f;color:#93c5fd;border:1px solid #3b82f6;border-radius:99px;padding:3px 12px;font-size:0.75rem;font-weight:700"></span>
+                    <span id="noInstallBadge" style="display:none;background:#450a0a;color:#fca5a5;border:1px solid #ef4444;border-radius:99px;padding:3px 12px;font-size:0.75rem;font-weight:700">⚠️ לא מותקן במחשב זה</span>
                 </div>
             </div>
             <p class="subtitle" id="userDisplayEmail" style="text-align: right;"></p>
@@ -225,7 +227,29 @@
         });
 
         const urlParams = new URLSearchParams(window.location.search);
-        const userParam = urlParams.get('user');
+        const userParam  = urlParams.get('user');
+        const installed  = urlParams.get('installed');
+        const allowedCnt = urlParams.get('allowed');
+        const resolved   = urlParams.get('resolved');
+
+        // Script redirects here after install with ?installed=1
+        if (installed === '1' && userParam) {
+            localStorage.setItem('xnet_install_status', JSON.stringify({
+                installed: true,
+                last_updated: new Date().toLocaleString('he-IL'),
+                allowed_count: allowedCnt || '?',
+                resolved: resolved || '?'
+            }));
+            history.replaceState({}, '', window.location.pathname + '?user=' + encodeURIComponent(userParam));
+            // Show install success banner
+            setTimeout(() => {
+                const b = document.createElement('div');
+                b.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#14532d;color:#86efac;border:1px solid #22c55e;border-radius:10px;padding:12px 24px;font-size:0.9rem;font-weight:700;z-index:9999;direction:rtl';
+                b.innerText = 'X-NET הותקן בהצלחה! המחשב שלך מוגן.';
+                document.body.appendChild(b);
+                setTimeout(() => b.remove(), 5000);
+            }, 800);
+        }
 
         if (userParam) {
             localStorage.setItem('xnet_user_email', userParam);
@@ -391,6 +415,7 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
             currentUserFileSha = user.sha;
             
             document.getElementById('dashWelcome').innerText = `שלום, ${currentUserData.name}`;
+            checkInstallStatus();
             document.getElementById('userDisplayEmail').innerText = `מזהה מערכת: ${email}`;
             
             const ul = document.getElementById('userAllowedSitesList');
@@ -406,6 +431,25 @@ powershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Conv
     }
 
     // בקשה משולבת: שומרת במערכת + פותחת אימייל
+    function checkInstallStatus() {
+        const raw = localStorage.getItem('xnet_install_status');
+        const badge   = document.getElementById('installBadge');
+        const noBadge = document.getElementById('noInstallBadge');
+        if (raw) {
+            try {
+                const s = JSON.parse(raw);
+                if (s.installed) {
+                    badge.style.display   = 'inline-block';
+                    noBadge.style.display = 'none';
+                    badge.innerText = `✅ מותקן · ${s.allowed_count} דומיינים · ${s.last_updated}`;
+                    return;
+                }
+            } catch(e) {}
+        }
+        badge.style.display   = 'none';
+        noBadge.style.display = 'inline-block';
+    }
+
     async function refreshDashboard() {
         const btn = event.target;
         btn.disabled = true; btn.innerText = '⏳ מרענן...';
