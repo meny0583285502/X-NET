@@ -1,364 +1,264 @@
-# X-NET Blocker v4 - TRUE WHITELIST via DNS Sinkhole
-# All English only - no Hebrew to avoid encoding issues
-param (
-    [string]$UserEmail = "",
-    [switch]$ForceReinstall = $false
-)
+# X-NET v5 - TRUE WHITELIST
+# DNS -> 127.0.0.1 (blocks everything)
+# Hosts file -> only allowed domains with real IPs
+param([string]$UserEmail = "")
 
-$InstallDir  = "C:\XNET"
-$EmailFile   = "$InstallDir\user.txt"
-$HostsFile   = "$env:SystemRoot\System32\drivers\etc\hosts"
-$StatusFile  = "$InstallDir\status.json"
-$GH_RAW      = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
-$GH_API      = "https://api.github.com/repos/meny0583285502/X-NET"
-$SITE_URL    = "https://meny0583285502.github.io/X-NET"
+$DIR     = "C:\XNET"
+$HOSTS   = "$env:SystemRoot\System32\drivers\etc\hosts"
+$GH_RAW  = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
 
-# ── Admin check ──
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "ERROR: Must run as Administrator" -ForegroundColor Red
-    Read-Host "Press Enter to exit"
-    exit
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("Administrator")) {
+    Write-Host "ERROR: Run as Administrator" -ForegroundColor Red; Read-Host; exit
 }
 
-if (-not (Test-Path $InstallDir)) { New-Item -Path $InstallDir -ItemType Directory -Force | Out-Null }
+if (-not (Test-Path $DIR)) { New-Item $DIR -ItemType Directory -Force | Out-Null }
 
-# ── Resolve email ──
-if ($UserEmail -ne "") {
-    $UserEmail | Out-File $EmailFile -Force -Encoding ASCII
-} elseif (Test-Path $EmailFile) {
-    $UserEmail = (Get-Content $EmailFile | Select-Object -First 1).Trim()
-} else {
-    Write-Host "ERROR: No user email found" -ForegroundColor Red
-    Read-Host "Press Enter to exit"
-    exit
-}
+# Resolve email
+$EmailFile = "$DIR\user.txt"
+if ($UserEmail) { $UserEmail | Out-File $EmailFile -Encoding ASCII -Force }
+elseif (Test-Path $EmailFile) { $UserEmail = (Get-Content $EmailFile -First 1).Trim() }
+else { Write-Host "ERROR: No email"; Read-Host; exit }
 
-$SafeEmail  = $UserEmail -replace '@','_at_' -replace '\.','_dot_'
-$ProfileUrl = "$GH_RAW/profiles/$SafeEmail.json"
-$BaseUrl    = "$GH_RAW/base_whitelist.json"
+$Safe = $UserEmail -replace '@','_at_' -replace '\.','_dot_'
 
-Write-Host "=====================================" -ForegroundColor Cyan
-Write-Host " X-NET v4 - TRUE WHITELIST MODE"      -ForegroundColor Cyan
-Write-Host " User: $UserEmail"                     -ForegroundColor Cyan
-Write-Host "=====================================" -ForegroundColor Cyan
+Write-Host "===== X-NET v5 | $UserEmail =====" -ForegroundColor Cyan
 
-# ── Fetch profile ──
-Write-Host "[1] Fetching profile..." -ForegroundColor Yellow
+# Fetch profile
+Write-Host "[1] Fetching profile from GitHub..." -ForegroundColor Yellow
 try {
-    $Profile = Invoke-RestMethod -Uri $ProfileUrl -UseBasicParsing -ErrorAction Stop
+    $P = Invoke-RestMethod "$GH_RAW/profiles/$Safe.json" -UseBasicParsing -ErrorAction Stop
+    Write-Host "    OK" -ForegroundColor Green
 } catch {
-    Write-Host "    ERROR: Cannot fetch profile - $_" -ForegroundColor Red
-    Read-Host "Press Enter to exit"
-    exit
+    Write-Host "    ERROR: $_" -ForegroundColor Red; Read-Host; exit
 }
 
-# ── UNINSTALL flow ──
-if ($Profile.requests.uninstall_approved -eq $true) {
-    Write-Host "[!] Uninstall approved - removing X-NET..." -ForegroundColor Yellow
-
-    # Remove hosts block
-    if (Test-Path $HostsFile) {
-        attrib -r $HostsFile 2>$null
-        $h = Get-Content $HostsFile -Raw -ErrorAction SilentlyContinue
-        if ($h) {
-            $h = $h -replace "(?s)# \[X-NET-START\].*?# \[X-NET-END\]\r?\n?",""
-            [System.IO.File]::WriteAllText($HostsFile, $h, [System.Text.Encoding]::UTF8)
-        }
+# UNINSTALL
+if ($P.requests.uninstall_approved -eq $true) {
+    Write-Host "[!] Uninstall approved..." -ForegroundColor Yellow
+    Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
+        Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue
     }
-
-    # Restore DNS to automatic
-    $adapters = Get-NetAdapter | Where-Object { $_.Status -eq "Up" }
-    foreach ($a in $adapters) {
-        Set-DnsClientServerAddress -InterfaceIndex $a.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue
-    }
-
-    # Remove browser policies
-    Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Google\Chrome" -Name "DnsOverHttpsMode" -ErrorAction SilentlyContinue
-    Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "BuiltInDnsClientEnabled" -ErrorAction SilentlyContinue
-
-    # Remove firewall rules
+    attrib -r $HOSTS 2>$null
+    $h = Get-Content $HOSTS -Raw
+    $h = $h -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?", ""
+    [IO.File]::WriteAllText($HOSTS, $h, [Text.Encoding]::UTF8)
     Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
-
-    # Remove startup task
     schtasks /delete /tn "XNET_Blocker" /f 2>$null | Out-Null
-
+    "HKLM:\SOFTWARE\Policies\Google\Chrome","HKLM:\SOFTWARE\Policies\Microsoft\Edge","HKLM:\SOFTWARE\Policies\Mozilla\Firefox" | ForEach-Object {
+        Remove-ItemProperty $_ -Name "DnsOverHttpsMode","BuiltInDnsClientEnabled","DNSOverHTTPS" -ErrorAction SilentlyContinue
+    }
     ipconfig /flushdns | Out-Null
-
-    # Reset uninstall flag via GitHub API (so reinstall works)
-    Write-Host "    Resetting uninstall flag on GitHub..." -ForegroundColor Gray
-    try {
-        $TokenFile = "$InstallDir\t.dat"
-        if (Test-Path $TokenFile) {
-            $Token = Get-Content $TokenFile -Raw
-            $FileUrl = "$GH_API/contents/profiles/$SafeEmail.json"
-            $FileInfo = Invoke-RestMethod -Uri $FileUrl -Headers @{Authorization="token $Token"} -ErrorAction Stop
-            $Profile.requests.uninstall_approved = $false
-            $Profile.requests.uninstall_requested = $false
-            $NewContent = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(($Profile | ConvertTo-Json -Depth 10)))
-            $Body = @{ message="Reset uninstall flag"; content=$NewContent; sha=$FileInfo.sha } | ConvertTo-Json
-            Invoke-RestMethod -Uri $FileUrl -Method Put -Headers @{Authorization="token $Token";'Content-Type'='application/json'} -Body $Body | Out-Null
-            Write-Host "    Flag reset - can reinstall anytime" -ForegroundColor Green
-        }
-    } catch { Write-Host "    Could not reset flag automatically" -ForegroundColor Gray }
-
-    # Remove install dir LAST
+    Write-Host "[+] Removed. Restart browser." -ForegroundColor Green
     Start-Sleep 1
-    Remove-Item -Path $InstallDir -Recurse -Force -ErrorAction SilentlyContinue
-
-    Write-Host "[+] X-NET removed successfully" -ForegroundColor Green
-    Read-Host "Press Enter to exit"
-    exit
+    Remove-Item $DIR -Recurse -Force -ErrorAction SilentlyContinue
+    Read-Host; exit
 }
 
-# ── PAUSE flow ──
-if ($Profile.requests.pause -and $Profile.requests.pause -ne "none" -and $Profile.requests.pause -ne "") {
+# PAUSE
+if ($P.requests.pause_until) {
     try {
-        $PauseEnd = [datetime]::Parse($Profile.requests.pause)
-        if ((Get-Date) -lt $PauseEnd) {
-            $MinLeft = [int](($PauseEnd - (Get-Date)).TotalMinutes)
-            Write-Host "[~] PAUSE MODE - $MinLeft minutes remaining" -ForegroundColor Yellow
-            Write-Host "    Removing blocks temporarily..." -ForegroundColor Yellow
-            if (Test-Path $HostsFile) {
-                attrib -r $HostsFile 2>$null
-                $h = Get-Content $HostsFile -Raw
-                $h = $h -replace "(?s)# \[X-NET-START\].*?# \[X-NET-END\]\r?\n?",""
-                [System.IO.File]::WriteAllText($HostsFile, $h, [System.Text.Encoding]::UTF8)
+        $Until = [datetime]::Parse($P.requests.pause_until)
+        if ((Get-Date) -lt $Until) {
+            $mins = [int]($Until - (Get-Date)).TotalMinutes
+            Write-Host "[~] PAUSED for $mins more minutes" -ForegroundColor Yellow
+            Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
+                Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue
             }
+            attrib -r $HOSTS 2>$null
+            $h = Get-Content $HOSTS -Raw
+            $h = $h -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?", ""
+            [IO.File]::WriteAllText($HOSTS, $h, [Text.Encoding]::UTF8)
             ipconfig /flushdns | Out-Null
-
-            # Schedule re-enable after pause
-            $ReEnableTime = $PauseEnd.ToString("HH:mm")
-            schtasks /create /tn "XNET_Resume" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"C:\XNET\updater.ps1`"" /sc once /st $ReEnableTime /f 2>$null | Out-Null
-            Write-Host "    Will re-enable at $ReEnableTime" -ForegroundColor Green
-            $StatusPause = @{ installed=$true; mode="paused"; paused_until=$Profile.requests.pause; user=$UserEmail } | ConvertTo-Json
-            $StatusPause | Out-File $StatusFile -Encoding UTF8 -Force
-            Read-Host "Press Enter to exit"
-            exit
+            schtasks /create /tn "XNET_Resume" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\updater.ps1`"" /sc once /st $Until.ToString("HH:mm") /f 2>$null | Out-Null
+            Write-Host "    Will resume at $($Until.ToString('HH:mm'))" -ForegroundColor Green
+            Read-Host; exit
         }
     } catch {}
 }
 
-# ── BUILD WHITELIST ──
+# BUILD WHITELIST
 Write-Host "[2] Building whitelist..." -ForegroundColor Yellow
-
-$Allowed = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$Allowed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 
 # Base whitelist from GitHub
 try {
-    $Base = Invoke-RestMethod -Uri $BaseUrl -UseBasicParsing -ErrorAction Stop
-    foreach ($d in $Base.allowed_domains) {
-        $clean = $d -replace "^https?://","" -replace "/$","" -replace "^www\.",""
-        [void]$Allowed.Add($clean)
+    $Base = Invoke-RestMethod "$GH_RAW/base_whitelist.json" -UseBasicParsing -ErrorAction Stop
+    $Base.allowed_domains | ForEach-Object {
+        $d = $_ -replace "^https?://","" -replace "/$","" -replace "^www\.",""
+        [void]$Allowed.Add($d)
     }
-    Write-Host "    Base: $($Base.allowed_domains.Count) domains" -ForegroundColor Green
-} catch { Write-Host "    Base whitelist unavailable" -ForegroundColor Gray }
+    Write-Host "    Base whitelist: $($Base.allowed_domains.Count) domains" -ForegroundColor Green
+} catch { Write-Host "    Base whitelist not found - continuing" -ForegroundColor Gray }
 
 # Profile whitelist
-if ($Profile.allowed_domains) {
-    foreach ($d in $Profile.allowed_domains) {
-        $clean = $d -replace "^https?://","" -replace "/$","" -replace "^www\.",""
-        [void]$Allowed.Add($clean)
+if ($P.allowed_domains) {
+    $P.allowed_domains | ForEach-Object {
+        $d = $_ -replace "^https?://","" -replace "/$","" -replace "^www\.",""
+        [void]$Allowed.Add($d)
     }
-    Write-Host "    Profile: $($Profile.allowed_domains.Count) domains" -ForegroundColor Green
+    Write-Host "    Profile domains: $($P.allowed_domains.Count)" -ForegroundColor Green
 }
 
-# Always-allow system domains
+# Block Google search if admin set flag
+$blockGoogle = ($P.block_google_search -eq $true)
+if (-not $blockGoogle) {
+    [void]$Allowed.Add("google.com")
+    [void]$Allowed.Add("googleapis.com")
+    [void]$Allowed.Add("gstatic.com")
+    [void]$Allowed.Add("accounts.google.com")
+}
+
+# Always allow - needed for X-NET itself to work
 @(
-    "meny0583285502.github.io","raw.githubusercontent.com","github.com",
-    "api.emailjs.com","fonts.googleapis.com","fonts.gstatic.com",
-    "ocsp.digicert.com","ocsp.pki.goog",
+    "meny0583285502.github.io","raw.githubusercontent.com","github.com","api.github.com",
+    "api.emailjs.com","fonts.googleapis.com","fonts.gstatic.com","gstatic.com",
     "update.microsoft.com","windowsupdate.microsoft.com","download.windowsupdate.com",
-    "ctldl.windowsupdate.com","wustat.windows.com","ntservicepack.microsoft.com",
-    "dns.msftncsi.com","www.msftncsi.com","login.microsoftonline.com","login.live.com",
-    "microsoft.com","office.com","office365.com","microsoftonline.com",
-    "windows.com","windowsupdate.com"
+    "ctldl.windowsupdate.com","wustat.windows.com","dns.msftncsi.com",
+    "login.microsoftonline.com","login.live.com","microsoft.com","office.com",
+    "ocsp.digicert.com","ocsp.pki.goog","crl.microsoft.com","pki.goog",
+    "msftconnecttest.com","msftncsi.com"
 ) | ForEach-Object { [void]$Allowed.Add($_) }
 
 Write-Host "    Total unique roots: $($Allowed.Count)" -ForegroundColor Cyan
 
-# ── TRUE WHITELIST: SET DNS TO SINKHOLE ──
-# Strategy: Point DNS to 0.0.0.0 for everything, then add allowed in hosts
-# Real approach: use Windows DNS Client + hosts file for allowed sites
+# RESOLVE IPs FOR WHITELIST
+Write-Host "[3] Resolving IPs (using current DNS before locking)..." -ForegroundColor Yellow
 
-Write-Host "[3] Configuring DNS sinkhole..." -ForegroundColor Yellow
-
-# Save current DNS for restore
-$adapters = Get-NetAdapter | Where-Object { $_.Status -eq "Up" }
-$DnsBackup = @{}
-foreach ($a in $adapters) {
-    $current = (Get-DnsClientServerAddress -InterfaceIndex $a.InterfaceIndex -AddressFamily IPv4).ServerAddresses
-    $DnsBackup[$a.Name] = $current -join ","
+# First restore DNS temporarily to resolve
+Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
+    Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue
 }
-$DnsBackup | ConvertTo-Json | Out-File "$InstallDir\dns_backup.json" -Encoding UTF8 -Force
+Start-Sleep 1
+ipconfig /flushdns | Out-Null
 
-# ── HOSTS FILE: block popular + redirect allowed to real IPs ──
-Write-Host "[4] Writing hosts file..." -ForegroundColor Yellow
+$HostLines = [System.Collections.Generic.List[string]]::new()
+$ok = 0; $fail = 0
 
-if (Test-Path $HostsFile) { attrib -r $HostsFile 2>$null }
+foreach ($root in $Allowed) {
+    $variants = @($root)
+    if (-not $root.StartsWith("www.")) { $variants += "www.$root" }
 
-$Lines = @()
-$Lines += "# [X-NET-START] - TRUE WHITELIST v4 - DO NOT EDIT"
-$Lines += "# User: $UserEmail"
-$Lines += "# Updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-$Lines += "# Allowed roots: $($Allowed.Count)"
-$Lines += ""
-
-# Comprehensive domain block list - all not in whitelist get blocked
-$ToBlock = @(
-    "facebook.com","instagram.com","twitter.com","x.com","tiktok.com","snapchat.com",
-    "pinterest.com","reddit.com","tumblr.com","linkedin.com","threads.net","discord.com",
-    "twitch.tv","kick.com","telegram.org","signal.org","viber.com","web.whatsapp.com",
-    "youtube.com","youtu.be","vimeo.com","dailymotion.com","rumble.com","odysee.com",
-    "netflix.com","disneyplus.com","hbo.com","max.com","hulu.com","peacocktv.com",
-    "spotify.com","soundcloud.com","deezer.com","tidal.com","pandora.com","apple.com",
-    "music.apple.com","tv.apple.com",
-    "ynet.co.il","mako.co.il","walla.co.il","nrg.co.il","haaretz.co.il",
-    "israelhayom.co.il","jpost.com","timesofisrael.com","calcalist.co.il","themarker.com",
-    "ice.co.il","reshet.tv","channel12.co.il","channel13.co.il","kan.org.il",
-    "arutz7.co.il","kikar.co.il","bhol.co.il","behadrei.co.il","hidabroot.com",
-    "cnn.com","bbc.com","bbc.co.uk","nytimes.com","washingtonpost.com","foxnews.com",
-    "nbcnews.com","reuters.com","theguardian.com","aljazeera.com",
-    "amazon.com","ebay.com","aliexpress.com","alibaba.com","etsy.com","walmart.com",
-    "chat.openai.com","chatgpt.com","openai.com","copilot.microsoft.com","sydney.bing.com",
-    "claude.ai","anthropic.com","gemini.google.com","perplexity.ai","character.ai","poe.com",
-    "steampowered.com","epicgames.com","roblox.com","minecraft.net","ea.com","battle.net",
-    "pornhub.com","xvideos.com","xhamster.com","xnxx.com","youporn.com","onlyfans.com",
-    "bet365.com","888casino.com","pokerstars.com","betway.com","winner.co.il",
-    "9gag.com","buzzfeed.com","medium.com","quora.com","stackoverflow.com",
-    "nordvpn.com","expressvpn.com","protonvpn.com","surfshark.com","cyberghostvpn.com",
-    "torproject.org","thepiratebay.org","1337x.to",
-    "bing.com","yahoo.com","yandex.com","duckduckgo.com",
-    "dropbox.com","box.com","mega.nz","mediafire.com","wetransfer.com",
-    "twitch.tv","mixer.com","dlive.tv",
-    "whatsapp.com","messenger.com","line.me","kik.com","skype.com"
-)
-
-$BlockedCount = 0
-foreach ($d in $ToBlock) {
-    $root = $d -replace "^www\.",""
-    if (-not $Allowed.Contains($root)) {
-        $Lines += "0.0.0.0 $root"
-        $Lines += "0.0.0.0 www.$root"
-        $BlockedCount += 2
+    foreach ($v in $variants) {
+        try {
+            $ips = [Net.Dns]::GetHostAddresses($v) | Where-Object { $_.AddressFamily -eq 'InterNetwork' } | Select-Object -First 1
+            if ($ips) {
+                $HostLines.Add("$($ips.IPAddressToString)`t$v")
+                $ok++
+            }
+        } catch { $fail++ }
     }
 }
 
-# Also block common CDN/tracking that bypass content
-$CDNBlock = @(
-    "googlevideo.com","ytimg.com","ggpht.com","googleusercontent.com",
-    "fbcdn.net","cdninstagram.com","xx.fbcdn.net","static.xx.fbcdn.net",
-    "cdntwitter.com","twimg.com","pbs.twimg.com","abs.twimg.com",
-    "tiktokcdn.com","tiktokv.com","musical.ly",
-    "akamaized.net","fastly.net","cloudfront.net"
-)
-foreach ($d in $CDNBlock) {
-    if (-not $Allowed.Contains($d)) {
-        $Lines += "0.0.0.0 $d"
-        $BlockedCount++
-    }
-}
+Write-Host "    Resolved: $ok IPs | Failed: $fail" -ForegroundColor Green
 
-$Lines += ""
-$Lines += "# [X-NET-END]"
-
-$HostsContent = Get-Content $HostsFile -Raw -ErrorAction SilentlyContinue
-if (-not $HostsContent) { $HostsContent = "" }
-if ($HostsContent -match "(?s)# \[X-NET-START\].*?# \[X-NET-END\]") {
-    $HostsContent = $HostsContent -replace "(?s)# \[X-NET-START\].*?# \[X-NET-END\]",($Lines -join "`r`n")
-} else {
-    $HostsContent = $HostsContent.TrimEnd() + "`r`n" + ($Lines -join "`r`n")
-}
-
-$Retry = 0; $OK = $false
-while (-not $OK -and $Retry -lt 5) {
+# LOCK DNS TO 127.0.0.1 (blocks all non-hosts traffic)
+Write-Host "[4] Locking DNS to 127.0.0.1..." -ForegroundColor Yellow
+Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
     try {
-        [System.IO.File]::WriteAllText($HostsFile, $HostsContent, [System.Text.Encoding]::UTF8)
-        $OK = $true
-    } catch { $Retry++; Start-Sleep 2 }
+        Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses "127.0.0.1"
+        Write-Host "    $($_.Name) -> 127.0.0.1" -ForegroundColor Green
+    } catch { Write-Host "    $($_.Name) -> FAILED" -ForegroundColor Red }
 }
-Write-Host "    Blocked: $BlockedCount entries" -ForegroundColor Green
 
-# ── BROWSER POLICIES ──
-Write-Host "[5] Applying browser policies..." -ForegroundColor Yellow
+# WRITE HOSTS FILE
+Write-Host "[5] Writing hosts file..." -ForegroundColor Yellow
+attrib -r $HOSTS 2>$null
 
+$block = [System.Collections.Generic.List[string]]::new()
+$block.Add("# [XNET] DO NOT EDIT")
+$block.Add("# User: $UserEmail | Updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
+$block.Add("# Allowed: $($Allowed.Count) roots | Resolved: $ok IPs")
+$block.Add("127.0.0.1 localhost")
+$block.Add("::1 localhost")
+$block.Add("")
+foreach ($line in $HostLines) { $block.Add($line) }
+$block.Add("")
+$block.Add("# [/XNET]")
+
+$existing = (Get-Content $HOSTS -Raw -ErrorAction SilentlyContinue) ?? ""
+$existing = $existing -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?", ""
+$final = $existing.TrimEnd() + "`r`n" + ($block -join "`r`n")
+
+$wrote = $false; $try = 0
+while (-not $wrote -and $try -lt 5) {
+    try { [IO.File]::WriteAllText($HOSTS, $final, [Text.Encoding]::UTF8); $wrote = $true }
+    catch { $try++; Start-Sleep 2 }
+}
+
+Write-Host "    Written: $ok entries" -ForegroundColor Green
+
+# DISABLE DoH IN BROWSERS (prevent bypass)
+Write-Host "[6] Disabling DoH in browsers..." -ForegroundColor Yellow
 # Chrome
 $k = "HKLM:\SOFTWARE\Policies\Google\Chrome"
-if (-not (Test-Path $k)) { New-Item -Path $k -Force | Out-Null }
-Set-ItemProperty -Path $k -Name "DnsOverHttpsMode" -Value "off" -Force
-Set-ItemProperty -Path $k -Name "BuiltInDnsClientEnabled" -Value 0 -Type DWord -Force
+if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
+Set-ItemProperty $k "DnsOverHttpsMode" "off" -Force
+Set-ItemProperty $k "BuiltInDnsClientEnabled" 0 -Type DWord -Force
 
-# Edge
+# Edge  
 $k = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"
-if (-not (Test-Path $k)) { New-Item -Path $k -Force | Out-Null }
-Set-ItemProperty -Path $k -Name "BuiltInDnsClientEnabled" -Value 0 -Type DWord -Force
-Set-ItemProperty -Path $k -Name "DnsOverHttpsMode" -Value "off" -Force
+if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
+Set-ItemProperty $k "BuiltInDnsClientEnabled" 0 -Type DWord -Force
+Set-ItemProperty $k "DnsOverHttpsMode" "off" -Force
 
 # Firefox
 $k = "HKLM:\SOFTWARE\Policies\Mozilla\Firefox"
-if (-not (Test-Path $k)) { New-Item -Path $k -Force | Out-Null }
-Set-ItemProperty -Path $k -Name "DNSOverHTTPS" -Value '{"Enabled": false}' -Force
+if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
+Set-ItemProperty $k "DNSOverHTTPS" '{"Enabled": false}' -Force
 
-Write-Host "    Browser DoH disabled" -ForegroundColor Green
+# Firefox user.js fallback
+$ffProfiles = Get-ChildItem "$env:APPDATA\Mozilla\Firefox\Profiles" -ErrorAction SilentlyContinue
+foreach ($ffp in $ffProfiles) {
+    "user_pref(`"network.trr.mode`", 5);" | Out-File "$($ffp.FullName)\user.js" -Encoding UTF8 -Force
+}
+Write-Host "    Done" -ForegroundColor Green
 
-# ── FIREWALL ──
-Write-Host "[6] Applying firewall rules..." -ForegroundColor Yellow
+# FIREWALL - Block Telegram by IP + VPN ports
+Write-Host "[7] Firewall rules..." -ForegroundColor Yellow
 Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
-
-# Telegram IP ranges
 New-NetFirewallRule -DisplayName "XNET-Telegram" -Direction Outbound -Action Block `
     -RemoteAddress @("149.154.160.0/20","91.108.4.0/22","91.108.8.0/22","91.108.56.0/22","95.161.64.0/20") `
     -Protocol Any -Profile Any -ErrorAction SilentlyContinue | Out-Null
-
-# Copilot/Bing AI
-New-NetFirewallRule -DisplayName "XNET-Copilot" -Direction Outbound -Action Block `
-    -RemoteAddress @("20.190.128.0/18","40.126.0.0/18") `
-    -Protocol Any -Profile Any -ErrorAction SilentlyContinue | Out-Null
-
-# VPN protocols
-New-NetFirewallRule -DisplayName "XNET-VPN-OpenVPN" -Direction Outbound -Action Block `
+New-NetFirewallRule -DisplayName "XNET-VPN-UDP1194" -Direction Outbound -Action Block `
     -Protocol UDP -RemotePort 1194 -Profile Any -ErrorAction SilentlyContinue | Out-Null
-New-NetFirewallRule -DisplayName "XNET-VPN-WireGuard" -Direction Outbound -Action Block `
+New-NetFirewallRule -DisplayName "XNET-VPN-UDP51820" -Direction Outbound -Action Block `
     -Protocol UDP -RemotePort 51820 -Profile Any -ErrorAction SilentlyContinue | Out-Null
+Write-Host "    Done" -ForegroundColor Green
 
 ipconfig /flushdns | Out-Null
-Write-Host "    Firewall rules applied" -ForegroundColor Green
 
-# ── STARTUP TASK ──
-Write-Host "[7] Registering startup task..." -ForegroundColor Yellow
-$Updater = "$InstallDir\updater.ps1"
-@"
-`$ps1 = "$InstallDir\run.ps1"
-Invoke-WebRequest -Uri "$GH_RAW/install.ps1" -OutFile `$ps1 -UseBasicParsing -ErrorAction SilentlyContinue
-if (Test-Path `$ps1) { & `$ps1 }
-"@ | Out-File $Updater -Encoding UTF8 -Force
+# STARTUP TASK
+Write-Host "[8] Startup task..." -ForegroundColor Yellow
+$updater = "$DIR\updater.ps1"
+"try { Invoke-WebRequest '$GH_RAW/install.ps1' -OutFile '$DIR\run.ps1' -UseBasicParsing; & '$DIR\run.ps1' } catch { & '$DIR\run.ps1' -ErrorAction SilentlyContinue }" | Out-File $updater -Encoding UTF8 -Force
 
-$exists = schtasks /query /tn "XNET_Blocker" 2>$null
-if ($LASTEXITCODE -ne 0) {
-    schtasks /create /tn "XNET_Blocker" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Updater`"" /sc onlogon /rl highest /f 2>$null | Out-Null
-    Write-Host "    Startup task created" -ForegroundColor Green
+if ((schtasks /query /tn "XNET_Blocker" 2>$null; $LASTEXITCODE) -ne 0) {
+    schtasks /create /tn "XNET_Blocker" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$updater`"" /sc onlogon /rl highest /f 2>$null | Out-Null
+    Write-Host "    Task created" -ForegroundColor Green
 } else {
-    Write-Host "    Startup task already exists" -ForegroundColor Green
+    Write-Host "    Task already exists" -ForegroundColor Green
 }
 
-# ── STATUS ──
-$Status = [ordered]@{
+# STATUS FILE
+@{
     installed    = $true
     mode         = "whitelist"
+    block_google = $blockGoogle
     last_updated = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
     user         = $UserEmail
     allowed      = $Allowed.Count
-    blocked      = $BlockedCount
-    version      = "4.0"
-}
-$Status | ConvertTo-Json | Out-File $StatusFile -Encoding UTF8 -Force
+    resolved     = $ok
+    version      = "5.0"
+} | ConvertTo-Json | Out-File "$DIR\status.json" -Encoding UTF8 -Force
 
 Write-Host ""
 Write-Host "=====================================" -ForegroundColor Green
-Write-Host " X-NET v4 ACTIVE - WHITELIST MODE"   -ForegroundColor Green
-Write-Host " Allowed: $($Allowed.Count) root domains" -ForegroundColor Green
-Write-Host " Blocked: $BlockedCount popular entries" -ForegroundColor Green
-Write-Host " + Firewall: Telegram / Copilot / VPN" -ForegroundColor Green
+Write-Host " X-NET v5 - EVERYTHING BLOCKED"       -ForegroundColor Green
+Write-Host " Allowed: $($Allowed.Count) domains"  -ForegroundColor Green
+Write-Host " Resolved IPs in hosts: $ok"          -ForegroundColor Green
+Write-Host " DNS locked: 127.0.0.1"               -ForegroundColor Green
+Write-Host " Block Google search: $blockGoogle"   -ForegroundColor Green
 Write-Host "=====================================" -ForegroundColor Green
-Write-Host " >> Restart your browser now! <<"     -ForegroundColor Yellow
+Write-Host " RESTART YOUR BROWSER NOW"            -ForegroundColor Yellow
 Write-Host ""
 Read-Host "Press Enter to close"
