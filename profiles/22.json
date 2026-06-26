@@ -1,0 +1,20 @@
+{
+  "name": "אלעזר",
+  "phone": "7",
+  "email": "22",
+  "registered_at": "2026-06-26T12:10:51.437Z",
+  "mode": "blacklist",
+  "allowed_domains": [
+    "https://meny0583285502.github.io/X-NET/"
+  ],
+  "blocked_domains": [
+    "facebook.com",
+    "youtube.com"
+  ],
+  "requests": {
+    "pause": null,
+    "uninstall_requested": false,
+    "uninstall_approved": false,
+    "site_request": null
+  }
+}
