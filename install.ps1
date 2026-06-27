@@ -1,4 +1,4 @@
-# X-NET v6.0 - TRUE WHITELIST + AUTO SYNC
+# X-NET v7.0 - ULTIMATE (Direct DNS, Tray Icon, UTC Sync)
 param([string]$UserEmail = "", [switch]$Silent)
 
 $DIR     = "C:\XNET"
@@ -15,18 +15,19 @@ else { if (-not $Silent) { Write-Host "ERROR: No email"; Read-Host }; exit }
 
 $Safe = $UserEmail -replace '@','_at_' -replace '\.','_dot_'
 
-if (-not $Silent) { Write-Host "===== X-NET v6.0 | $UserEmail =====" -ForegroundColor Cyan }
+if (-not $Silent) { Write-Host "===== X-NET v7.0 | $UserEmail =====" -ForegroundColor Cyan }
 
 # Fetch profile
 try {
     $P = Invoke-RestMethod "$GH_RAW/profiles/$Safe.json" -UseBasicParsing -ErrorAction Stop
 } catch {
-    if (-not $Silent) { Write-Host "    ERROR: $_" -ForegroundColor Red; Read-Host }
+    if (-not $Silent) { Write-Host "    ERROR: Failed to pull profile. Check network." -ForegroundColor Red; Start-Sleep 3 }
     exit
 }
 
-# UNINSTALL LOGIC
+# ---------------- UNINSTALL LOGIC ----------------
 if ($P.requests.uninstall_approved -eq $true) {
+    if (-not $Silent) { Write-Host "[!] Uninstalling X-NET completely..." -ForegroundColor Yellow }
     Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
         Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue
     }
@@ -35,24 +36,36 @@ if ($P.requests.uninstall_approved -eq $true) {
     $h = $h -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?", ""
     [IO.File]::WriteAllText($HOSTS, $h, [Text.Encoding]::UTF8)
     Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
+    
+    # Remove Tasks and Tray
     schtasks /delete /tn "XNET_Sync" /f 2>$null | Out-Null
-    schtasks /delete /tn "XNET_Blocker" /f 2>$null | Out-Null
+    $StartupShortcut = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\XNET_Tray.lnk"
+    Remove-Item $StartupShortcut -Force -ErrorAction SilentlyContinue
     
     "HKLM:\SOFTWARE\Policies\Google\Chrome","HKLM:\SOFTWARE\Policies\Microsoft\Edge","HKLM:\SOFTWARE\Policies\Mozilla\Firefox" | ForEach-Object {
         Remove-ItemProperty $_ -Name "DnsOverHttpsMode","BuiltInDnsClientEnabled","DNSOverHTTPS" -ErrorAction SilentlyContinue
     }
     ipconfig /flushdns | Out-Null
+    
+    # Kill running tray process
+    Get-Process -Name powershell -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match "tray.ps1" } | Stop-Process -Force -ErrorAction SilentlyContinue
+    
     Start-Sleep 1
     Remove-Item $DIR -Recurse -Force -ErrorAction SilentlyContinue
-    if (-not $Silent) { Write-Host "[+] Removed Successfully. Restart browser." -ForegroundColor Green; Read-Host }
+    
+    if (-not $Silent) { 
+        Write-Host "[+] Removed Successfully. You can close this window." -ForegroundColor Green
+        Read-Host "Press Enter to exit" 
+    }
     exit
 }
 
-# PAUSE LOGIC
+# ---------------- PAUSE LOGIC (UTC Synced) ----------------
 if ($null -ne $P.requests.pause -and $null -ne $P.requests.pause.until) {
     try {
-        $Until = [datetime]($P.requests.pause.until)
-        if ((Get-Date) -lt $Until) {
+        $UntilUTC = [datetime]::Parse($P.requests.pause.until).ToUniversalTime()
+        if ((Get-Date).ToUniversalTime() -lt $UntilUTC) {
+            if (-not $Silent) { Write-Host "[~] PAUSE ACTIVE. Restoring internet temporarily." -ForegroundColor Yellow }
             Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
                 Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue
             }
@@ -61,16 +74,18 @@ if ($null -ne $P.requests.pause -and $null -ne $P.requests.pause.until) {
             $h = $h -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?", ""
             [IO.File]::WriteAllText($HOSTS, $h, [Text.Encoding]::UTF8)
             ipconfig /flushdns | Out-Null
-            if (-not $Silent) { Write-Host "[~] PAUSED until $($Until.ToString('HH:mm'))" -ForegroundColor Yellow; Read-Host }
+            if (-not $Silent) { 
+                Write-Host "Paused until $([datetime]::Parse($P.requests.pause.until).ToLocalTime().ToString('HH:mm'))" -ForegroundColor Green
+                Read-Host "Press Enter to close" 
+            }
             exit
         }
     } catch {}
 }
 
-# BUILD WHITELIST
+# ---------------- BUILD WHITELIST ----------------
 $Allowed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 
-# Core Dependencies for Gemini and loading Google services correctly
 [void]$Allowed.Add("googleapis.com")
 [void]$Allowed.Add("gstatic.com")
 [void]$Allowed.Add("accounts.google.com")
@@ -106,13 +121,8 @@ if ($P.allowed_domains) {
     "office.com","ocsp.digicert.com","ocsp.pki.goog","crl.microsoft.com","pki.goog"
 ) | ForEach-Object { [void]$Allowed.Add($_) }
 
-# RESOLVE IPs (Force Google DNS temporarily for fast and reliable resolution)
-Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
-    Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses "8.8.8.8","1.1.1.1" -ErrorAction SilentlyContinue
-}
-Start-Sleep -Seconds 2
-ipconfig /flushdns | Out-Null
-
+# ---------------- RESOLVE IPs (Direct Query, No Adapter changes) ----------------
+if (-not $Silent) { Write-Host "[+] Resolving DNS securely..." -ForegroundColor Yellow }
 $HostLines = [System.Collections.Generic.List[string]]::new()
 $ok = 0
 
@@ -121,16 +131,21 @@ foreach ($root in $Allowed) {
     if (-not $root.StartsWith("www.")) { $variants += "www.$root" }
     foreach ($v in $variants) {
         try {
-            $ips = [Net.Dns]::GetHostAddresses($v) | Where-Object { $_.AddressFamily -eq 'InterNetwork' }
-            if ($ips) {
-                foreach ($ip in $ips) { $HostLines.Add("$($ip.IPAddressToString)`t$v") }
-                $ok++
+            # Bypasses local DNS completely and queries Google directly to avoid glitches
+            $res = Resolve-DnsName -Name $v -Server 8.8.8.8 -Type A -ErrorAction SilentlyContinue
+            if ($res) {
+                foreach ($r in $res) {
+                    if ($r.Type -eq 'A') {
+                        $HostLines.Add("$($r.IPAddress)`t$v")
+                        $ok++
+                    }
+                }
             }
         } catch {}
     }
 }
 
-# LOCK DNS TO 127.0.0.1
+# ---------------- LOCK DNS ----------------
 Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
     $name = $_.Name
     $idx  = $_.InterfaceIndex
@@ -143,7 +158,7 @@ Get-NetAdapterBinding | Where-Object { $_.ComponentID -eq "ms_tcpip6" -and $_.En
     Disable-NetAdapterBinding -Name $_.Name -ComponentID "ms_tcpip6" -ErrorAction SilentlyContinue
 }
 
-# WRITE HOSTS FILE
+# ---------------- WRITE HOSTS ----------------
 attrib -r $HOSTS 2>$null
 $block = [System.Collections.Generic.List[string]]::new()
 $block.Add("# [XNET] DO NOT EDIT")
@@ -161,7 +176,7 @@ $existing = $existing -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?", ""
 $final = $existing.TrimEnd() + "`r`n" + ($block -join "`r`n")
 [IO.File]::WriteAllText($HOSTS, $final, [Text.Encoding]::UTF8)
 
-# DISABLE DoH IN BROWSERS
+# ---------------- SECURE BROWSERS & FIREWALL ----------------
 $k = "HKLM:\SOFTWARE\Policies\Google\Chrome"; if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
 Set-ItemProperty $k "DnsOverHttpsMode" "off" -Force
 Set-ItemProperty $k "BuiltInDnsClientEnabled" 0 -Type DWord -Force
@@ -171,20 +186,50 @@ Set-ItemProperty $k "DnsOverHttpsMode" "off" -Force
 $k = "HKLM:\SOFTWARE\Policies\Mozilla\Firefox"; if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
 Set-ItemProperty $k "DNSOverHTTPS" '{"Enabled": false}' -Force
 
-# FIREWALL RULES
 Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
 New-NetFirewallRule -DisplayName "XNET-Telegram" -Direction Outbound -Action Block -RemoteAddress @("149.154.160.0/20","91.108.4.0/22","91.108.8.0/22","91.108.56.0/22","95.161.64.0/20") -Protocol Any -Profile Any -ErrorAction SilentlyContinue | Out-Null
 New-NetFirewallRule -DisplayName "XNET-VPN-UDP" -Direction Outbound -Action Block -Protocol UDP -RemotePort @(1194,51820) -Profile Any -ErrorAction SilentlyContinue | Out-Null
 New-NetFirewallRule -DisplayName "XNET-Block-QUIC" -Direction Outbound -Action Block -Protocol UDP -RemotePort 443 -Profile Any -ErrorAction SilentlyContinue | Out-Null
 ipconfig /flushdns | Out-Null
 
-# BACKGROUND SYNC TASK (RUNS EVERY 3 MINUTES)
+# ---------------- DEPLOY TRAY ICON APP ----------------
+$TrayCode = @'
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+$notify = New-Object System.Windows.Forms.NotifyIcon
+$notify.Icon = [System.Drawing.SystemIcons]::Shield
+$notify.Visible = $true
+$notify.Text = "X-NET מגן ומסנן (פעיל)"
+$form = New-Object System.Windows.Forms.Form
+$form.ShowInTaskbar = $false
+$form.WindowState = "Minimized"
+[System.Windows.Forms.Application]::Run($form)
+'@
+$TrayCode | Out-File "$DIR\tray.ps1" -Encoding UTF8 -Force
+
+# Create startup shortcut for the tray
+$WshShell = New-Object -ComObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\XNET_Tray.lnk")
+$Shortcut.TargetPath = "powershell.exe"
+$Shortcut.Arguments = "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\tray.ps1`""
+$Shortcut.Save()
+
+# Launch tray now if not running
+$TrayRunning = Get-Process -Name powershell -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match "tray.ps1" }
+if (-not $TrayRunning) {
+    Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\tray.ps1`""
+}
+
+# ---------------- BACKGROUND SYNC TASK (3 MIN) ----------------
 $SyncTask = "$DIR\sync.ps1"
 "try { Invoke-WebRequest '$GH_RAW/install.ps1' -OutFile '$DIR\install.ps1' -UseBasicParsing; & '$DIR\install.ps1' -UserEmail '$UserEmail' -Silent } catch {}" | Out-File $SyncTask -Encoding UTF8 -Force
 
-schtasks /create /tn "XNET_Sync" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$SyncTask`"" /sc minute /mo 3 /ru "SYSTEM" /f 2>&1 | Out-Null
+schtasks /query /tn "XNET_Sync" 2>$null | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    schtasks /create /tn "XNET_Sync" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$SyncTask`"" /sc minute /mo 3 /ru "SYSTEM" /f 2>&1 | Out-Null
+}
 
-# STATUS FILE
+# ---------------- STATUS UPDATE ----------------
 @{
     installed             = $true
     mode                  = "whitelist"
@@ -194,13 +239,14 @@ schtasks /create /tn "XNET_Sync" /tr "powershell.exe -WindowStyle Hidden -Execut
     user                  = $UserEmail
     allowed               = $Allowed.Count
     resolved              = $ok
-    version               = "6.0"
+    version               = "7.0"
 } | ConvertTo-Json | Out-File "$DIR\status.json" -Encoding UTF8 -Force
 
 if (-not $Silent) {
     Write-Host "=====================================" -ForegroundColor Green
-    Write-Host " X-NET v6.0 - SYNC ACTIVE"            -ForegroundColor Green
+    Write-Host " X-NET v7.0 - SYNC & TRAY ACTIVE"     -ForegroundColor Green
     Write-Host "=====================================" -ForegroundColor Green
     Start-Process "https://meny0583285502.github.io/X-NET/?user=$UserEmail&installed=1"
-    Start-Sleep 2
+    Start-Sleep 1
+    Read-Host "Press Enter to exit"
 }
