@@ -7,8 +7,6 @@ $DIR     = "C:\XNET"
 $HOSTS   = "$env:SystemRoot\System32\drivers\etc\hosts"
 $GH_RAW  = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
 
-
-
 if (-not (Test-Path $DIR)) { New-Item $DIR -ItemType Directory -Force | Out-Null }
 
 # Resolve email
@@ -78,46 +76,55 @@ if ($P.requests.pause_until) {
 Write-Host "[2] Building whitelist..." -ForegroundColor Yellow
 $Allowed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 
-# Base whitelist from GitHub
-try {
-    $Base = Invoke-RestMethod "$GH_RAW/base_whitelist.json" -UseBasicParsing -ErrorAction Stop
-    $Base.allowed_domains | ForEach-Object {
-        $d = $_ -replace "^https?://","" -replace "/$","" -replace "^www\.",""
-        [void]$Allowed.Add($d)
-    }
-    Write-Host "    Base whitelist: $($Base.allowed_domains.Count) domains" -ForegroundColor Green
-} catch { Write-Host "    Base whitelist not found - continuing" -ForegroundColor Gray }
+# 1. Base Core Dependencies (Must be open for permitted sites/Gemini to load UI elements)
+[void]$Allowed.Add("googleapis.com")
+[void]$Allowed.Add("gstatic.com")
+[void]$Allowed.Add("accounts.google.com")
 
-# Profile whitelist
+# 2. Base sites flag check
+if ($P.base_sites_enabled -eq $true) {
+    Write-Host "    Base Sites: ENABLED" -ForegroundColor Cyan
+    try {
+        $Base = Invoke-RestMethod "$GH_RAW/base_whitelist.json" -UseBasicParsing -ErrorAction Stop
+        $Base.allowed_domains | ForEach-Object {
+            $d = $_ -replace "^https?://","" -replace "/$","" -replace "^www\.",""
+            [void]$Allowed.Add($d)
+        }
+        Write-Host "    Added $($Base.allowed_domains.Count) base domains" -ForegroundColor Green
+    } catch { Write-Host "    Base whitelist not found - continuing" -ForegroundColor Gray }
+} else {
+    Write-Host "    Base Sites: DISABLED" -ForegroundColor DarkGray
+}
+
+# 3. Google Search flag check
+if ($P.google_search_enabled -eq $true) {
+    Write-Host "    Google Search: ENABLED" -ForegroundColor Cyan
+    [void]$Allowed.Add("google.com")
+    [void]$Allowed.Add("google.co.il")
+} else {
+    Write-Host "    Google Search: DISABLED" -ForegroundColor DarkGray
+}
+
+# 4. Profile Custom Whitelist
 if ($P.allowed_domains) {
     $P.allowed_domains | ForEach-Object {
         $d = $_ -replace "^https?://","" -replace "/$","" -replace "^www\.",""
         [void]$Allowed.Add($d)
     }
-    Write-Host "    Profile domains: $($P.allowed_domains.Count)" -ForegroundColor Green
+    Write-Host "    Profile custom domains: $($P.allowed_domains.Count)" -ForegroundColor Green
 }
 
-# Block Google search if admin set flag
-$blockGoogle = ($P.block_google_search -eq $true)
-if (-not $blockGoogle) {
-    [void]$Allowed.Add("google.com")
-    [void]$Allowed.Add("googleapis.com")
-    [void]$Allowed.Add("gstatic.com")
-    [void]$Allowed.Add("accounts.google.com")
-}
-
-# Always allow - needed for X-NET itself to work
+# 5. Always allow - needed for X-NET internal ops
 @(
     "meny0583285502.github.io","raw.githubusercontent.com","github.com","api.github.com",
-    "api.emailjs.com","fonts.googleapis.com","fonts.gstatic.com","gstatic.com",
-    "update.microsoft.com","windowsupdate.microsoft.com","download.windowsupdate.com",
-    "ctldl.windowsupdate.com","wustat.windows.com","dns.msftncsi.com",
-    "login.microsoftonline.com","login.live.com","microsoft.com","office.com",
-    "ocsp.digicert.com","ocsp.pki.goog","crl.microsoft.com","pki.goog",
+    "api.emailjs.com","update.microsoft.com","windowsupdate.microsoft.com",
+    "download.windowsupdate.com","ctldl.windowsupdate.com","wustat.windows.com",
+    "dns.msftncsi.com","login.microsoftonline.com","login.live.com","microsoft.com",
+    "office.com","ocsp.digicert.com","ocsp.pki.goog","crl.microsoft.com","pki.goog",
     "msftconnecttest.com","msftncsi.com"
 ) | ForEach-Object { [void]$Allowed.Add($_) }
 
-Write-Host "    Total unique roots: $($Allowed.Count)" -ForegroundColor Cyan
+Write-Host "    Total unique roots to resolve: $($Allowed.Count)" -ForegroundColor Cyan
 
 # RESOLVE IPs FOR WHITELIST
 Write-Host "[3] Resolving IPs (using current DNS before locking)..." -ForegroundColor Yellow
@@ -220,16 +227,24 @@ foreach ($ffp in $ffProfiles) {
 }
 Write-Host "    Done" -ForegroundColor Green
 
-# FIREWALL - Block Telegram by IP + VPN ports
+# FIREWALL - Block Telegram by IP, VPN ports + QUIC (Chrome bypass)
 Write-Host "[7] Firewall rules..." -ForegroundColor Yellow
 Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
+
 New-NetFirewallRule -DisplayName "XNET-Telegram" -Direction Outbound -Action Block `
     -RemoteAddress @("149.154.160.0/20","91.108.4.0/22","91.108.8.0/22","91.108.56.0/22","95.161.64.0/20") `
     -Protocol Any -Profile Any -ErrorAction SilentlyContinue | Out-Null
+
 New-NetFirewallRule -DisplayName "XNET-VPN-UDP1194" -Direction Outbound -Action Block `
     -Protocol UDP -RemotePort 1194 -Profile Any -ErrorAction SilentlyContinue | Out-Null
+
 New-NetFirewallRule -DisplayName "XNET-VPN-UDP51820" -Direction Outbound -Action Block `
     -Protocol UDP -RemotePort 51820 -Profile Any -ErrorAction SilentlyContinue | Out-Null
+
+# מונע מגוגל כרום לעקוף את החסימות המקומיות דרך חיבורים ישירים
+New-NetFirewallRule -DisplayName "XNET-Block-QUIC" -Direction Outbound -Action Block `
+    -Protocol UDP -RemotePort 443 -Profile Any -ErrorAction SilentlyContinue | Out-Null
+
 Write-Host "    Done" -ForegroundColor Green
 
 ipconfig /flushdns | Out-Null
@@ -249,23 +264,25 @@ if ($LASTEXITCODE -ne 0) {
 
 # STATUS FILE
 @{
-    installed    = $true
-    mode         = "whitelist"
-    block_google = $blockGoogle
-    last_updated = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-    user         = $UserEmail
-    allowed      = $Allowed.Count
-    resolved     = $ok
-    version      = "5.0"
+    installed             = $true
+    mode                  = "whitelist"
+    base_sites_enabled    = $P.base_sites_enabled
+    google_search_enabled = $P.google_search_enabled
+    last_updated          = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+    user                  = $UserEmail
+    allowed               = $Allowed.Count
+    resolved              = $ok
+    version               = "5.1"
 } | ConvertTo-Json | Out-File "$DIR\status.json" -Encoding UTF8 -Force
 
 Write-Host ""
 Write-Host "=====================================" -ForegroundColor Green
-Write-Host " X-NET v5 - EVERYTHING BLOCKED"       -ForegroundColor Green
+Write-Host " X-NET v5.1 - EVERYTHING BLOCKED"     -ForegroundColor Green
+Write-Host " Base Sites Enabled: $($P.base_sites_enabled -eq $true)"  -ForegroundColor Green
+Write-Host " Google Search Enabled: $($P.google_search_enabled -eq $true)" -ForegroundColor Green
 Write-Host " Allowed: $($Allowed.Count) domains"  -ForegroundColor Green
 Write-Host " Resolved IPs in hosts: $ok"          -ForegroundColor Green
 Write-Host " DNS locked: 127.0.0.1"               -ForegroundColor Green
-Write-Host " Block Google search: $blockGoogle"   -ForegroundColor Green
 Write-Host "=====================================" -ForegroundColor Green
 Write-Host " RESTART YOUR BROWSER NOW"            -ForegroundColor Yellow
 Write-Host ""
