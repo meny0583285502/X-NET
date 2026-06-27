@@ -4,7 +4,7 @@
   "email": "11",
   "registered_at": "2026-06-27T21:12:58.853Z",
   "mode": "whitelist",
-  "block_google_search": false,
+  "block_google_search": true,
   "allowed_domains": [
     "meny0583285502.github.io",
     "gemini.google.com"
