@@ -7,7 +7,8 @@
   "allowed_domains": [
     "https://meny0583285502.github.io/X-NET/",
     "https://gemini.google.com/",
-    "hb2.bankleumi.co.il"
+    "hb2.bankleumi.co.il",
+    "claude.ai"
   ],
   "blocked_domains": [
     "facebook.com",
