@@ -8,20 +8,9 @@ $HOSTS   = "$env:SystemRoot\System32\drivers\etc\hosts"
 $GH_RAW  = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("Administrator")) {
-    Write-Host "Requesting Administrator rights..." -ForegroundColor Yellow
-    # Save self to fixed path before re-launching (avoids infinite loop from temp path)
-    $selfPath = "$env:TEMP\xnet_run.ps1"
-    if ($MyInvocation.MyCommand.Path -and (Test-Path $MyInvocation.MyCommand.Path)) {
-        Copy-Item $MyInvocation.MyCommand.Path $selfPath -Force
-    }
-    $emailArg = if ($UserEmail) { " -UserEmail `"$UserEmail`"" } else { "" }
-    Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$selfPath`"$emailArg" -Verb RunAs
+    Write-Host "ERROR: Run XNET_Setup.bat as Administrator (right-click -> Run as administrator)" -ForegroundColor Red
+    Start-Sleep 3
     exit
-}
-# Safety: if we somehow re-enter without admin, stop
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("Administrator")) {
-    Write-Host "ERROR: Could not get admin rights. Right-click and Run as Administrator." -ForegroundColor Red
-    Read-Host; exit
 }
 
 if (-not (Test-Path $DIR)) { New-Item $DIR -ItemType Directory -Force | Out-Null }
