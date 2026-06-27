@@ -6,17 +6,14 @@
   "mode": "whitelist",
   "block_google_search": false,
   "allowed_domains": [
-    "meny0583285502.github.io"
+    "meny0583285502.github.io",
+    "gemini.google.com"
   ],
   "blocked_domains": [],
   "requests": {
     "pause": null,
     "uninstall_requested": false,
     "uninstall_approved": false,
-    "site_request": {
-      "url": "gemini.google.com",
-      "reason": "",
-      "date": "2026-06-27T21:13:29.385Z"
-    }
+    "site_request": null
   }
 }
