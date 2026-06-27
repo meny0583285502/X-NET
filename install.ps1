@@ -7,11 +7,6 @@ $DIR     = "C:\XNET"
 $HOSTS   = "$env:SystemRoot\System32\drivers\etc\hosts"
 $GH_RAW  = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
 
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("Administrator")) {
-    Write-Host "ERROR: Run XNET_Setup.bat as Administrator (right-click -> Run as administrator)" -ForegroundColor Red
-    Start-Sleep 3
-    exit
-}
 
 if (-not (Test-Path $DIR)) { New-Item $DIR -ItemType Directory -Force | Out-Null }
 
