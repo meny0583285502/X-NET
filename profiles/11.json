@@ -17,7 +17,7 @@
       "date": "2026-06-27T21:16:40.216Z"
     },
     "uninstall_requested": false,
-    "uninstall_approved": false,
+    "uninstall_approved": true,
     "site_request": null
   }
 }
