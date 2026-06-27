@@ -13,6 +13,10 @@
     "pause": null,
     "uninstall_requested": false,
     "uninstall_approved": false,
-    "site_request": null
+    "site_request": {
+      "url": "gemini.google.com",
+      "reason": "",
+      "date": "2026-06-27T21:13:29.385Z"
+    }
   }
 }
