@@ -94,6 +94,9 @@
             📥 הורד והפעל עדכונים (החלת שינויים / הסרה / השהיה)
         </button>
 
+        <!-- באנר השהיה דינמי -->
+        <div id="activePauseBanner" class="alert alert-warn" style="display:none; margin-bottom: 15px; font-size: 0.95rem; text-align: center; font-weight: bold;"></div>
+
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <div id="userDashAlert" class="alert" style="display:none;flex:1;margin-bottom:0;margin-left:8px"></div>
             <button class="btn btn-secondary btn-sm" onclick="refreshDashboard()" style="white-space:nowrap">🔄 ריענון נתונים</button>
@@ -123,7 +126,7 @@
         </div>
 
         <div id="tab-pause" class="panel">
-            <div class="alert alert-info">ההשהיה תיכנס לתוקף רק לאחר לחיצה על "הורד והפעל עדכונים".</div>
+            <div class="alert alert-info">המערכת מסתנכרנת אוטומטית כל 3 דקות. להחלה מיידית לחץ על הכפתור הירוק למעלה.</div>
             <div class="field"><label>זמן מבוקש</label>
                 <select id="pauseTime"><option value="15">15 דקות</option><option value="30">30 דקות</option><option value="60">שעה אחת</option></select>
             </div>
@@ -135,7 +138,7 @@
         </div>
 
         <div id="tab-uninstall" class="panel">
-            <div id="uninstallInfoMsg" class="alert alert-info">הסרה מחייבת אישור מנהל. אם אושר, לחץ על הכפתור הירוק העליון להסרה.</div>
+            <div id="uninstallInfoMsg" class="alert alert-info">הסרה מחייבת אישור מנהל. מומלץ לבקש השהיה קצרה אם צריך דחוף.</div>
             <div style="display:flex;gap:8px;margin-bottom:12px">
                 <button class="btn btn-warn" style="flex:1" onclick="userRequestUninstall('system')">📋 בקש הסרה במערכת</button>
                 <button class="btn btn-secondary" style="flex:1" onclick="userRequestUninstall('email')">📧 בקש באימייל</button>
@@ -230,8 +233,12 @@
             <ul id="editUserDomainList" class="domain-list"></ul>
             
             <div style="border-top: 1px solid #334155; padding-top: 15px; margin-top: 15px;">
-                <h4 style="color:#f59e0b; margin-bottom:10px; font-size: 0.95rem;">⚡ פעולות מנהל</h4>
-                <button class="btn btn-danger btn-sm" style="width:100%;" onclick="adminTriggerUninstall()">אישור הסרה יזום למשתמש זה</button>
+                <h4 style="color:#f59e0b; margin-bottom:10px; font-size: 0.95rem;">⚡ פעולות מנהל יזומות</h4>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <input type="number" id="adminInitiatedPause" placeholder="דקות השהיה" style="width:100px; padding: 6px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
+                    <button class="btn btn-warn btn-sm" style="flex:1;" onclick="adminTriggerPause()">הפעל השהיה</button>
+                </div>
+                <button class="btn btn-danger btn-sm" style="width:100%;" onclick="adminTriggerUninstall()">אישור הסרה יזום (ללא בקשת משתמש)</button>
             </div>
         </div>
     </div>
@@ -348,6 +355,17 @@
             if (raw && JSON.parse(raw).installed) { document.getElementById('installBadge').style.display = 'inline-block'; document.getElementById('installBadge').innerText = `✅ מותקן`; } 
             else { document.getElementById('noInstallBadge').style.display = 'inline-block'; }
 
+            // טיפול בבאנר השהיה
+            const banner = document.getElementById('activePauseBanner');
+            banner.style.display = 'none';
+            if (currentUserData.requests && currentUserData.requests.pause && currentUserData.requests.pause.until) {
+                const untilDate = new Date(currentUserData.requests.pause.until);
+                if (untilDate > new Date()) {
+                    banner.style.display = 'block';
+                    banner.innerText = `⏳ המערכת מושהית זמנית עד השעה: ${untilDate.toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}`;
+                }
+            }
+
             const ul = document.getElementById('userAllowedSitesList'); ul.innerHTML = '';
             currentUserData.allowed_domains.forEach(d => { ul.innerHTML += `<li>${d}</li>`; });
             document.getElementById('userStatusFlags').innerText = `הגדרות חשבון: גישה לאתרים בסיסיים - ${currentUserData.base_sites_enabled ? 'פעיל 🟢' : 'כבוי 🔴'} | חיפוש גוגל - ${currentUserData.google_search_enabled ? 'פעיל 🟢' : 'כבוי 🔴'}`;
@@ -376,8 +394,14 @@
         if (method === 'email') window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=השהיה`);
         else {
             if(!currentUserData.requests) currentUserData.requests = {};
-            currentUserData.requests.pause = { time: time, reason: "", date: new Date().toISOString(), until: new Date(Date.now() + parseInt(time)*60000).toISOString() };
-            try { currentUserFileSha = await updateUserJson(currentUserEmail, currentUserData, currentUserFileSha, "Pause"); uiAlert('userDashAlert', "בקשת השהיה נשמרה. לחץ על הכפתור הירוק למעלה להחלה מיידית.", "success"); } catch(e){}
+            // שימוש בזמן עולמי כדי למנוע פערי אזורי זמן
+            const untilUTC = new Date(Date.now() + parseInt(time)*60000).toISOString();
+            currentUserData.requests.pause = { time: time, reason: "", date: new Date().toISOString(), until: untilUTC };
+            try { 
+                currentUserFileSha = await updateUserJson(currentUserEmail, currentUserData, currentUserFileSha, "Pause"); 
+                uiAlert('userDashAlert', "בקשת השהיה נשמרה. לחץ על הכפתור הירוק למעלה להחלה מיידית.", "success"); 
+                refreshDashboard();
+            } catch(e){}
         }
     }
 
@@ -392,8 +416,6 @@
 
     // ================= ניהול =================
     let currentAdminEditingEmail = "";
-    
-    // ניהול רשימת בסיס (Base Whitelist)
     let baseWhitelistData = null;
     let baseWhitelistSha = "";
 
@@ -495,6 +517,13 @@
     async function adminApprovePause() { currentUserData.requests.pause = null; await saveAdminChanges("Pause cleared"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
     async function adminApproveUninstall() { if(!currentUserData.requests) currentUserData.requests = {}; currentUserData.requests.uninstall_approved = true; await saveAdminChanges("Approved uninstall"); closeAdminModal(); loadAdminData(); }
     async function adminTriggerUninstall() { if(confirm("לאשר הסרה?")) { if(!currentUserData.requests) currentUserData.requests = {}; currentUserData.requests.uninstall_approved = true; await saveAdminChanges("Proactive uninstall"); closeAdminModal(); loadAdminData(); } }
+    async function adminTriggerPause() {
+        const m = document.getElementById('adminInitiatedPause').value; if(!m) return;
+        if(!currentUserData.requests) currentUserData.requests = {};
+        const untilUTC = new Date(Date.now() + parseInt(m)*60000).toISOString();
+        currentUserData.requests.pause = { time: m, reason: "יזום מנהל", date: new Date().toISOString(), until: untilUTC };
+        await saveAdminChanges("Trigger pause"); alert("הופעל בהצלחה!"); adminOpenUser(currentAdminEditingEmail);
+    }
     async function adminToggleFeatures() {
         currentUserData.base_sites_enabled = document.getElementById('adminBaseSitesToggle').checked;
         currentUserData.google_search_enabled = document.getElementById('adminGoogleSearchToggle').checked;
