@@ -6,7 +6,8 @@
   "mode": "blacklist",
   "allowed_domains": [
     "https://meny0583285502.github.io/X-NET/",
-    "https://gemini.google.com/"
+    "https://gemini.google.com/",
+    "hb2.bankleumi.co.il"
   ],
   "blocked_domains": [
     "facebook.com",
