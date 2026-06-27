@@ -8,6 +8,7 @@ $HOSTS   = "$env:SystemRoot\System32\drivers\etc\hosts"
 $GH_RAW  = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
 
 
+
 if (-not (Test-Path $DIR)) { New-Item $DIR -ItemType Directory -Force | Out-Null }
 
 # Resolve email
@@ -149,13 +150,21 @@ foreach ($root in $Allowed) {
 Write-Host "    Resolved: $ok IPs | Failed: $fail" -ForegroundColor Green
 
 # LOCK DNS TO 127.0.0.1 (blocks all non-hosts traffic)
-Write-Host "[4] Locking DNS to 127.0.0.1..." -ForegroundColor Yellow
+Write-Host "[4] Locking DNS - IPv4 + IPv6..." -ForegroundColor Yellow
 Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
+    $name = $_.Name
+    $idx  = $_.InterfaceIndex
     try {
-        Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses "127.0.0.1"
-        Write-Host "    $($_.Name) -> 127.0.0.1" -ForegroundColor Green
-    } catch { Write-Host "    $($_.Name) -> FAILED" -ForegroundColor Red }
+        Set-DnsClientServerAddress -InterfaceIndex $idx -ServerAddresses @("127.0.0.1") -ErrorAction SilentlyContinue
+        netsh interface ipv6 set dnsservers name="$name" static ::1 primary 2>&1 | Out-Null
+        Write-Host "    $name -> 127.0.0.1 / ::1" -ForegroundColor Green
+    } catch { Write-Host "    $name -> $_" -ForegroundColor Red }
 }
+# Disable IPv6 binding so router cant answer DNS via IPv6
+Get-NetAdapterBinding | Where-Object { $_.ComponentID -eq "ms_tcpip6" -and $_.Enabled } | ForEach-Object {
+    Disable-NetAdapterBinding -Name $_.Name -ComponentID "ms_tcpip6" -ErrorAction SilentlyContinue
+}
+Write-Host "    IPv6 disabled on all adapters" -ForegroundColor Green
 
 # WRITE HOSTS FILE
 Write-Host "[5] Writing hosts file..." -ForegroundColor Yellow
