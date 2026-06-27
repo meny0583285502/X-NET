@@ -1,4 +1,4 @@
-# X-NET v5 - TRUE WHITELIST
+# X-NET v5.2 - TRUE WHITELIST (Fixed Resolution & Pause logic)
 # DNS -> 127.0.0.1 (blocks everything)
 # Hosts file -> only allowed domains with real IPs
 param([string]$UserEmail = "")
@@ -17,7 +17,7 @@ else { Write-Host "ERROR: No email"; Read-Host; exit }
 
 $Safe = $UserEmail -replace '@','_at_' -replace '\.','_dot_'
 
-Write-Host "===== X-NET v5 | $UserEmail =====" -ForegroundColor Cyan
+Write-Host "===== X-NET v5.2 | $UserEmail =====" -ForegroundColor Cyan
 
 # Fetch profile
 Write-Host "[1] Fetching profile from GitHub..." -ForegroundColor Yellow
@@ -47,13 +47,13 @@ if ($P.requests.uninstall_approved -eq $true) {
     Write-Host "[+] Removed. Restart browser." -ForegroundColor Green
     Start-Sleep 1
     Remove-Item $DIR -Recurse -Force -ErrorAction SilentlyContinue
-    Read-Host; exit
+    exit
 }
 
 # PAUSE
-if ($P.requests.pause_until) {
+if ($null -ne $P.requests.pause -and $null -ne $P.requests.pause.until) {
     try {
-        $Until = [datetime]::Parse($P.requests.pause_until)
+        $Until = [datetime]::Parse($P.requests.pause.until)
         if ((Get-Date) -lt $Until) {
             $mins = [int]($Until - (Get-Date)).TotalMinutes
             Write-Host "[~] PAUSED for $mins more minutes" -ForegroundColor Yellow
@@ -67,7 +67,7 @@ if ($P.requests.pause_until) {
             ipconfig /flushdns | Out-Null
             schtasks /create /tn "XNET_Resume" /tr "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\updater.ps1`"" /sc once /st $Until.ToString("HH:mm") /f 2>$null | Out-Null
             Write-Host "    Will resume at $($Until.ToString('HH:mm'))" -ForegroundColor Green
-            Read-Host; exit
+            exit
         }
     } catch {}
 }
@@ -76,10 +76,11 @@ if ($P.requests.pause_until) {
 Write-Host "[2] Building whitelist..." -ForegroundColor Yellow
 $Allowed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 
-# 1. Base Core Dependencies (Must be open for permitted sites/Gemini to load UI elements)
+# 1. Base Core Dependencies (Must be open for Gemini and other sites to load visually)
 [void]$Allowed.Add("googleapis.com")
 [void]$Allowed.Add("gstatic.com")
 [void]$Allowed.Add("accounts.google.com")
+[void]$Allowed.Add("googleusercontent.com")
 
 # 2. Base sites flag check
 if ($P.base_sites_enabled -eq $true) {
@@ -129,7 +130,6 @@ Write-Host "    Total unique roots to resolve: $($Allowed.Count)" -ForegroundCol
 # RESOLVE IPs FOR WHITELIST
 Write-Host "[3] Resolving IPs (using current DNS before locking)..." -ForegroundColor Yellow
 
-# First restore DNS temporarily to resolve
 Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
     Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue
 }
@@ -145,16 +145,19 @@ foreach ($root in $Allowed) {
 
     foreach ($v in $variants) {
         try {
-            $ips = [Net.Dns]::GetHostAddresses($v) | Where-Object { $_.AddressFamily -eq 'InterNetwork' } | Select-Object -First 1
+            # Pull ALL IPs for load balanced sites like Gemini, not just the first one
+            $ips = [Net.Dns]::GetHostAddresses($v) | Where-Object { $_.AddressFamily -eq 'InterNetwork' }
             if ($ips) {
-                $HostLines.Add("$($ips.IPAddressToString)`t$v")
+                foreach ($ip in $ips) {
+                    $HostLines.Add("$($ip.IPAddressToString)`t$v")
+                }
                 $ok++
             }
         } catch { $fail++ }
     }
 }
 
-Write-Host "    Resolved: $ok IPs | Failed: $fail" -ForegroundColor Green
+Write-Host "    Resolved: $ok Domains | Failed: $fail" -ForegroundColor Green
 
 # LOCK DNS TO 127.0.0.1 (blocks all non-hosts traffic)
 Write-Host "[4] Locking DNS - IPv4 + IPv6..." -ForegroundColor Yellow
@@ -167,11 +170,10 @@ Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
         Write-Host "    $name -> 127.0.0.1 / ::1" -ForegroundColor Green
     } catch { Write-Host "    $name -> $_" -ForegroundColor Red }
 }
-# Disable IPv6 binding so router cant answer DNS via IPv6
+# Disable IPv6 binding
 Get-NetAdapterBinding | Where-Object { $_.ComponentID -eq "ms_tcpip6" -and $_.Enabled } | ForEach-Object {
     Disable-NetAdapterBinding -Name $_.Name -ComponentID "ms_tcpip6" -ErrorAction SilentlyContinue
 }
-Write-Host "    IPv6 disabled on all adapters" -ForegroundColor Green
 
 # WRITE HOSTS FILE
 Write-Host "[5] Writing hosts file..." -ForegroundColor Yellow
@@ -180,7 +182,7 @@ attrib -r $HOSTS 2>$null
 $block = [System.Collections.Generic.List[string]]::new()
 $block.Add("# [XNET] DO NOT EDIT")
 $block.Add("# User: $UserEmail | Updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
-$block.Add("# Allowed: $($Allowed.Count) roots | Resolved: $ok IPs")
+$block.Add("# Allowed: $($Allowed.Count) roots | Resolved rules: $($HostLines.Count)")
 $block.Add("127.0.0.1 localhost")
 $block.Add("::1 localhost")
 $block.Add("")
@@ -199,35 +201,26 @@ while (-not $wrote -and $try -lt 5) {
     catch { $try++; Start-Sleep 2 }
 }
 
-Write-Host "    Written: $ok entries" -ForegroundColor Green
+Write-Host "    Written: $($HostLines.Count) IP entries" -ForegroundColor Green
 
-# DISABLE DoH IN BROWSERS (prevent bypass)
+# DISABLE DoH IN BROWSERS
 Write-Host "[6] Disabling DoH in browsers..." -ForegroundColor Yellow
-# Chrome
 $k = "HKLM:\SOFTWARE\Policies\Google\Chrome"
 if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
 Set-ItemProperty $k "DnsOverHttpsMode" "off" -Force
 Set-ItemProperty $k "BuiltInDnsClientEnabled" 0 -Type DWord -Force
 
-# Edge  
 $k = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"
 if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
 Set-ItemProperty $k "BuiltInDnsClientEnabled" 0 -Type DWord -Force
 Set-ItemProperty $k "DnsOverHttpsMode" "off" -Force
 
-# Firefox
 $k = "HKLM:\SOFTWARE\Policies\Mozilla\Firefox"
 if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
 Set-ItemProperty $k "DNSOverHTTPS" '{"Enabled": false}' -Force
-
-# Firefox user.js fallback
-$ffProfiles = Get-ChildItem "$env:APPDATA\Mozilla\Firefox\Profiles" -ErrorAction SilentlyContinue
-foreach ($ffp in $ffProfiles) {
-    "user_pref(`"network.trr.mode`", 5);" | Out-File "$($ffp.FullName)\user.js" -Encoding UTF8 -Force
-}
 Write-Host "    Done" -ForegroundColor Green
 
-# FIREWALL - Block Telegram by IP, VPN ports + QUIC (Chrome bypass)
+# FIREWALL RULES
 Write-Host "[7] Firewall rules..." -ForegroundColor Yellow
 Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
 
@@ -235,18 +228,13 @@ New-NetFirewallRule -DisplayName "XNET-Telegram" -Direction Outbound -Action Blo
     -RemoteAddress @("149.154.160.0/20","91.108.4.0/22","91.108.8.0/22","91.108.56.0/22","95.161.64.0/20") `
     -Protocol Any -Profile Any -ErrorAction SilentlyContinue | Out-Null
 
-New-NetFirewallRule -DisplayName "XNET-VPN-UDP1194" -Direction Outbound -Action Block `
-    -Protocol UDP -RemotePort 1194 -Profile Any -ErrorAction SilentlyContinue | Out-Null
+New-NetFirewallRule -DisplayName "XNET-VPN-UDP" -Direction Outbound -Action Block `
+    -Protocol UDP -RemotePort @(1194,51820) -Profile Any -ErrorAction SilentlyContinue | Out-Null
 
-New-NetFirewallRule -DisplayName "XNET-VPN-UDP51820" -Direction Outbound -Action Block `
-    -Protocol UDP -RemotePort 51820 -Profile Any -ErrorAction SilentlyContinue | Out-Null
-
-# מונע מגוגל כרום לעקוף את החסימות המקומיות דרך חיבורים ישירים
 New-NetFirewallRule -DisplayName "XNET-Block-QUIC" -Direction Outbound -Action Block `
     -Protocol UDP -RemotePort 443 -Profile Any -ErrorAction SilentlyContinue | Out-Null
 
 Write-Host "    Done" -ForegroundColor Green
-
 ipconfig /flushdns | Out-Null
 
 # STARTUP TASK
@@ -257,9 +245,6 @@ $updater = "$DIR\updater.ps1"
 schtasks /query /tn "XNET_Blocker" 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
     schtasks /create /tn "XNET_Blocker" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$updater`"" /sc onlogon /rl highest /f 2>$null | Out-Null
-    Write-Host "    Task created" -ForegroundColor Green
-} else {
-    Write-Host "    Task already exists" -ForegroundColor Green
 }
 
 # STATUS FILE
@@ -272,19 +257,11 @@ if ($LASTEXITCODE -ne 0) {
     user                  = $UserEmail
     allowed               = $Allowed.Count
     resolved              = $ok
-    version               = "5.1"
+    version               = "5.2"
 } | ConvertTo-Json | Out-File "$DIR\status.json" -Encoding UTF8 -Force
 
-Write-Host ""
 Write-Host "=====================================" -ForegroundColor Green
-Write-Host " X-NET v5.1 - EVERYTHING BLOCKED"     -ForegroundColor Green
-Write-Host " Base Sites Enabled: $($P.base_sites_enabled -eq $true)"  -ForegroundColor Green
-Write-Host " Google Search Enabled: $($P.google_search_enabled -eq $true)" -ForegroundColor Green
-Write-Host " Allowed: $($Allowed.Count) domains"  -ForegroundColor Green
-Write-Host " Resolved IPs in hosts: $ok"          -ForegroundColor Green
-Write-Host " DNS locked: 127.0.0.1"               -ForegroundColor Green
+Write-Host " X-NET v5.2 - READY"                  -ForegroundColor Green
 Write-Host "=====================================" -ForegroundColor Green
-Write-Host " RESTART YOUR BROWSER NOW"            -ForegroundColor Yellow
-Write-Host ""
 Start-Process "https://meny0583285502.github.io/X-NET/?user=$UserEmail&installed=1&allowed=$($Allowed.Count)&resolved=$ok"
-Read-Host "Press Enter to close"
+Start-Sleep 2
