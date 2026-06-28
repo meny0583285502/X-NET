@@ -515,8 +515,10 @@ async function loadUserDashboard(email){
     document.getElementById("dashWelcome").innerText="שלום, "+currentUserData.name;
     document.getElementById("userDisplayEmail").innerText="מזהה: "+email;
 
-    const inst=localStorage.getItem("xnet_install_status");
-    if(inst&&JSON.parse(inst).installed){
+    // בדוק התקנה לפי last_updated בפרופיל - אם עודכן ב-10 דקות האחרונות = מותקן ופעיל
+    const lastUp = currentUserData.last_updated;
+    const isActive = lastUp && (new Date() - new Date(lastUp)) < 10*60*1000;
+    if(isActive){
       document.getElementById("installBadge").style.display="inline-flex";
       document.getElementById("noInstallBadge").style.display="none";
     } else {
