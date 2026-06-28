@@ -22,7 +22,11 @@
     },
     "uninstall_requested": false,
     "uninstall_approved": false,
-    "site_request": null
+    "site_request": {
+      "url": "chat.google.com",
+      "reason": "",
+      "date": "2026-06-28T23:39:12.317Z"
+    }
   },
   "last_updated": "2026-06-29 02:00:50"
 }
