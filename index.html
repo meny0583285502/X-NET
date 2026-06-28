@@ -684,13 +684,18 @@ function renderUserData(){
 
 // ── User actions ──
 async function sendSiteRequest(){
-  const url=fmtDomain(document.getElementById('reqUrl').value); if(!url) return;
-  if(!currentUser.requests) currentUser.requests={};
-  currentUser.requests.site_request={url,reason:document.getElementById('reqReason').value,date:new Date().toISOString()};
-  try{ currentUserSha=await saveProfile(currentUserEmail,currentUser,currentUserSha,"Site request"); document.getElementById('reqDone').style.display='block'; document.getElementById('reqUrl').value=''; }
-  catch(e){ uiAlert('userAlert','שגיאה: '+e.message); }
+  const url=fmtDomain(document.getElementById('reqUrl').value);
+  const reason=document.getElementById('reqReason').value;
+  if(!url) return;
+  // Send email only - no GitHub commit
+  const subject=encodeURIComponent('בקשת פתיחה: '+url);
+  const body=encodeURIComponent('משתמש: '+currentUserEmail+'\nאתר: '+url+(reason?'\nסיבה: '+reason:''));
+  window.open('https://mail.google.com/mail/?view=cm&to='+ADMIN_EMAIL+'&su='+subject+'&body='+body);
+  document.getElementById('reqDone').style.display='block';
+  document.getElementById('reqUrl').value='';
+  document.getElementById('reqReason').value='';
 }
-function sendSiteEmail(){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת פתיחה: ${fmtDomain(document.getElementById('reqUrl').value)}`); }
+function sendSiteEmail(){ sendSiteRequest(); }
 async function requestPause(method){
   const time=document.getElementById('pauseTime').value, reason=document.getElementById('pauseReason').value;
   if(method==='email'){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת השהיה ${time} דקות&body=${reason}`); return; }
@@ -841,6 +846,7 @@ async function adminApproveSite(url){
   adminEditData.requests.site_request=null;
   adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Approve site");
   openEditUser(adminEditEmail,adminEditSha); loadAdminUsers();
+  uiAlert('adminAlert','✅ אושר — המשתמש צריך ללחוץ הורד עדכון','success');
 }
 async function adminDismissSite(){ adminEditData.requests.site_request=null; adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Dismiss site"); openEditUser(adminEditEmail,adminEditSha); loadAdminUsers(); }
 async function adminApprovePause(min){
