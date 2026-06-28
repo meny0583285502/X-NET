@@ -323,5 +323,5 @@ if (-not $Silent) {
     if (Test-Path "$DIR\sync_log.txt") { Get-Content "$DIR\sync_log.txt" | Select-Object -Last 10 | Write-Host -ForegroundColor Yellow }
     else { Write-Host "  (אין לוג)" -ForegroundColor Red }
     Read-Host "לחץ Enter לפתיחת לוח ניהול"
-    Start-Process "https://meny0583285502.github.io/X-NET/?user=$UserEmail&installed=1"
+    Start-Process ("https://meny0583285502.github.io/X-NET/?user=" + $UserEmail + "&installed=1")
 }
