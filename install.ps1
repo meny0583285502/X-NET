@@ -3,6 +3,11 @@ $DIR    = "C:\XNET"
 $HOSTS  = "$env:SystemRoot\System32\drivers\etc\hosts"
 $GH_RAW = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
 
+# תיקון: יצירת התיקייה אם היא לא קיימת
+if (-not (Test-Path $DIR)) { 
+    New-Item -Path $DIR -ItemType Directory -Force | Out-Null 
+}
+
 $EmailFile = "$DIR\user.txt"
 if (-not (Test-Path $EmailFile)) { exit }
 $UserEmail = (Get-Content $EmailFile -First 1).Trim()
