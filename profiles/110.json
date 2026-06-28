@@ -14,7 +14,12 @@
     "queue.call2all.co.il"
   ],
   "requests": {
-    "pause": null,
+    "pause": {
+      "time": "15",
+      "reason": "יזום מנהל",
+      "date": "2026-06-28T23:12:51.287Z",
+      "until": "2026-06-28T23:27:51.288Z"
+    },
     "uninstall_requested": false,
     "uninstall_approved": false,
     "site_request": null
