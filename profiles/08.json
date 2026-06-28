@@ -4,7 +4,7 @@
   "email": "08",
   "registered_at": "2026-06-28T10:45:14.219Z",
   "base_sites_enabled": true,
-  "google_search_enabled": false,
+  "google_search_enabled": true,
   "allowed_domains": [
     "meny0583285502.github.io"
   ],
