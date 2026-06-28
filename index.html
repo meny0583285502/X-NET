@@ -129,7 +129,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:#2563eb;cursor:pointer}
   <div id="activePauseBanner" class="alert alert-warn" style="display:none;margin-bottom:12px"></div>
   <div id="userDashAlert" class="alert" style="display:none;margin-bottom:12px"></div>
 
-  <button class="btn btn-success btn-block" onclick="downloadInstallerScript(currentUserEmail)" style="margin-bottom:20px;font-size:1rem;padding:13px">
+  <button class="btn btn-success btn-block" onclick="openPlatformModal()" style="margin-bottom:20px;font-size:1rem;padding:13px">
     📥 הורד והפעל עדכונים (החלת שינויים / הסרה / השהיה)
   </button>
 
@@ -176,7 +176,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:#2563eb;cursor:pointer}
       <button class="btn btn-ghost" style="flex:1" onclick="userRequestUninstall('email')">📧 באימייל</button>
     </div>
     <hr class="sep">
-    <button id="btnUserUninstallApprove" class="btn btn-danger btn-block" onclick="downloadInstallerScript(currentUserEmail)" disabled>
+    <button id="btnUserUninstallApprove" class="btn btn-danger btn-block" onclick="openPlatformModal()" disabled>
       הסר תוכנה מהמחשב (לאחר אישור מנהל)
     </button>
   </div>
@@ -377,19 +377,27 @@ async function updateUserJson(email,data,sha,msg){
 }
 
 // ── BAT Download ───────────────────────────────────────────────
-function downloadInstallerScript(email){
-  const url = "https://meny0583285502.github.io/X-NET/install.ps1";
-  // BAT: downloads install.ps1 then runs it as Admin
-  const lines = [
+function downloadInstallerScript(email, platform){
+  // כותב ps1 ב-base64 לתוך BAT, שכותב אותו לדיסק ומריץ כ-Admin
+  const ps = "Set-Location $env:TEMP\r\n" +
+    "Write-Host 'X-NET Downloading...' -ForegroundColor Cyan\r\n" +
+    "try { Invoke-WebRequest -Uri 'https://meny0583285502.github.io/X-NET/install.ps1' -OutFile \"$env:TEMP\\xnet_install.ps1\" -UseBasicParsing -ErrorAction Stop }\r\n" +
+    "catch { Write-Host ('FAIL: '+$_) -ForegroundColor Red; Read-Host 'Enter'; exit 1 }\r\n" +
+    "Write-Host 'Download OK' -ForegroundColor Green\r\n" +
+    "& \"$env:TEMP\\xnet_install.ps1\" -UserEmail '" + email + "'";
+
+  // encode ps as UTF-16LE base64 (PowerShell EncodedCommand format)
+  let utf16 = "";
+  for(let i=0;i<ps.length;i++){ const c=ps.charCodeAt(i); utf16+=String.fromCharCode(c&0xff,(c>>8)&0xff); }
+  const encoded = btoa(utf16);
+
+  const bat = [
     "@echo off",
-    "echo X-NET - Downloading...",
-    "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Invoke-WebRequest -Uri '" + url + "' -OutFile '%TEMP%\\xnet_i.ps1' -UseBasicParsing\"",
-    "if not exist \"%TEMP%\\xnet_i.ps1\" ( echo ERROR: Download failed! & pause & exit /b 1 )",
-    "echo Running as Administrator...",
-    "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \\'%TEMP%\\xnet_i.ps1\\' -UserEmail \\'"+email+"\\'' -Verb RunAs -Wait\"",
+    "echo X-NET Update - Please wait...",
+    'powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -ArgumentList \'-NoProfile -ExecutionPolicy Bypass -EncodedCommand ' + encoded + '\' -Verb RunAs -Wait"',
     "exit"
-  ];
-  const bat = lines.join("\r\n");
+  ].join("\r\n");
+
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([bat],{type:"text/plain"}));
   a.download="XNET_Update.bat";
@@ -608,7 +616,7 @@ async function adminToggleFeatures(){
   currentUserData.google_search_enabled=document.getElementById("adminGoogleSearchToggle").checked;
   try{ await saveAdminChanges("Toggle features"); }catch(e){ alert("שגיאה"); }
 }
-function adminDownloadForUser(){ downloadInstallerScript(currentAdminEditingEmail); }
+function adminDownloadForUser(){ openPlatformModal(currentAdminEditingEmail); }
 async function saveAdminChanges(msg){ currentUserFileSha=await updateUserJson(currentAdminEditingEmail,currentUserData,currentUserFileSha,msg); }
 function closeAdminModal(){ document.getElementById("adminModalOverlay").classList.remove("open"); }
 
@@ -640,6 +648,48 @@ async function adminAddBaseDomain(){
 }
 async function adminRemoveBaseDomain(i){ baseWhitelistData.allowed_domains.splice(i,1); renderBaseDomainList(); await saveBaseWhitelist("Remove base domain"); }
 async function saveBaseWhitelist(msg){ baseWhitelistSha=await ghPut("base_whitelist.json",JSON.stringify(baseWhitelistData,null,2),baseWhitelistSha,msg); }
+
+// ── Platform Modal ─────────────────────────────────────────────
+let _pendingDownloadEmail = null;
+
+function openPlatformModal(email){
+  _pendingDownloadEmail = email || currentUserEmail;
+  document.getElementById("platformModalOverlay").classList.add("open");
+}
+function closePlatformModal(){
+  document.getElementById("platformModalOverlay").classList.remove("open");
+}
+function selectPlatform(p){
+  closePlatformModal();
+  if(p === "windows") downloadInstallerScript(_pendingDownloadEmail);
+  else alert("Android — בקרוב!");
+}
+
 </script>
+
+<!-- ===== MODAL: Platform Picker ===== -->
+<div class="modal-overlay" id="platformModalOverlay" onclick="if(event.target===this)closePlatformModal()">
+  <div class="modal" style="max-width:480px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:2rem;margin-bottom:8px">📲</div>
+      <h3 style="font-size:1.1rem;font-weight:800;color:#1e293b">בחר פלטפורמה</h3>
+      <p style="font-size:0.83rem;color:#64748b;margin-top:4px">על איזה מכשיר להתקין את X-NET?</p>
+    </div>
+    <div class="platform-grid">
+      <div class="platform-card" onclick="selectPlatform('windows')">
+        <div class="pc">🖥️</div>
+        <h3>Windows</h3>
+        <p>מחשב נייד / שולחני</p>
+      </div>
+      <div class="platform-card" id="androidCard" onclick="selectPlatform('android')" style="opacity:0.5;cursor:not-allowed">
+        <div class="pc">📱</div>
+        <h3>Android</h3>
+        <p style="color:#dc2626;font-weight:600">בקרוב</p>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-block" style="margin-top:14px" onclick="closePlatformModal()">ביטול</button>
+  </div>
+</div>
+
 </body>
 </html>
