@@ -10,7 +10,12 @@
     "gemini.google.com"
   ],
   "requests": {
-    "pause": null,
+    "pause": {
+      "time": "15",
+      "reason": "",
+      "date": "2026-06-28T08:31:35.422Z",
+      "until": "2026-06-28T08:46:35.421Z"
+    },
     "uninstall_requested": false,
     "uninstall_approved": false,
     "site_request": null
