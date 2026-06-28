@@ -10,7 +10,8 @@
     "mail.google.com",
     "hagizra.news",
     "aliexpress.com",
-    "gsmexpertzone.com"
+    "gsmexpertzone.com",
+    "queue.call2all.co.il"
   ],
   "requests": {
     "pause": null,
