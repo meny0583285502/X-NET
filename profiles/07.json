@@ -3,7 +3,7 @@
   "phone": "ח",
   "email": "07",
   "registered_at": "2026-06-28T09:35:35.459Z",
-  "base_sites_enabled": false,
+  "base_sites_enabled": true,
   "google_search_enabled": true,
   "allowed_domains": [
     "meny0583285502.github.io"
