@@ -330,9 +330,19 @@
     }
 
     function downloadInstallerScript(email) {
-        const psScript = `Invoke-WebRequest -Uri 'https://meny0583285502.github.io/X-NET/install.ps1' -OutFile "$env:TEMP\\xnet_install.ps1" -UseBasicParsing; & "$env:TEMP\\xnet_install.ps1" -UserEmail '${email}'`;
-        const batContent = `@echo off\npowershell -Command "$code = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${btoa(unescape(encodeURIComponent(psScript)))}')); Set-Content -Path '%TEMP%\\rx.ps1' -Value $code -Encoding UTF8; Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \\"%TEMP%\\rx.ps1\\"' -Verb RunAs"`;
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([batContent], { type: 'text/plain' })); a.download = `XNET_Update.bat`;
+        const lines = [
+            '@echo off',
+            'echo X-NET - Downloading installer...',
+            "powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://meny0583285502.github.io/X-NET/install.ps1' -OutFile '%TEMP%\\xnet_install.ps1' -UseBasicParsing"",
+            'if not exist "%TEMP%\\xnet_install.ps1" ( echo ERROR: Download failed! & pause & exit /b 1 )',
+            'echo Launching as Administrator...',
+            `powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File ""%TEMP%\\xnet_install.ps1"" -UserEmail ""${email}""' -Verb RunAs -Wait"`,
+            'exit'
+        ];
+        const bat = lines.join('\r\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([bat], { type: 'text/plain' }));
+        a.download = 'XNET_Update.bat';
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
 
