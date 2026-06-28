@@ -4,785 +4,995 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>X-NET | מערכת סינון גלישה</title>
-<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3203/3203853.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231a1f2e'/><path d='M50 15 L82 32 L82 55 C82 71 67 83 50 88 C33 83 18 71 18 55 L18 32 Z' fill='none' stroke='%234f8ef7' stroke-width='5'/><path d='M35 50 L45 60 L65 40' stroke='%234f8ef7' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 <style>
-:root{--bg:#0f172a;--text:#e2e8f0;--card:#1e293b;--border:#334155;--input:#0f172a;--muted:#64748b;--accent:#3b82f6}
-[data-theme=light]{--bg:#f1f5f9;--text:#1e293b;--card:#ffffff;--border:#cbd5e1;--input:#f8fafc;--muted:#64748b;--accent:#2563eb}
-*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif}
-body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px}
-.card{background:var(--card);border-radius:18px;box-shadow:0 4px 32px rgba(0,0,0,.4);padding:32px;width:100%;max-width:720px;margin:auto;border:1px solid var(--border)}
-.view{display:none}.view.active{display:block}
+:root {
+  --bg: #0d1117;
+  --surface: #161b27;
+  --surface2: #1c2333;
+  --border: #2a3347;
+  --border2: #3a4a63;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --text3: #6a7585;
+  --accent: #4f8ef7;
+  --accent2: #7c5ff7;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d29922;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,.4);
+}
+[data-theme=light] {
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --surface2: #f5f8fc;
+  --border: #d0d9e6;
+  --border2: #b0bdd0;
+  --text: #1a2235;
+  --text2: #4a5568;
+  --text3: #7a8898;
+  --shadow: 0 4px 24px rgba(0,0,0,.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background .2s, color .2s; }
 
-/* Header */
-.logo{display:flex;align-items:center;gap:14px;margin-bottom:28px}
-.logo-icon{width:48px;height:48px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;box-shadow:0 2px 12px rgba(59,130,246,.4)}
-.logo-text h1{font-size:1.5rem;font-weight:800;color:#f1f5f9;letter-spacing:-.02em}
-.logo-text p{font-size:0.8rem;color:var(--muted);margin-top:2px}
-.version-badge{background:#1e3a5f;color:#60a5fa;border:1px solid #2563eb;border-radius:6px;padding:2px 8px;font-size:0.72rem;font-weight:700;margin-right:8px}
+/* Layout */
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; right: 0; bottom: 0; z-index: 10; }
+.main { flex: 1; margin-right: 220px; padding: 28px; max-width: 900px; }
+@media (max-width: 768px) { .sidebar { display: none; } .main { margin-right: 0; } }
 
-/* Form */
-.field{margin-bottom:14px}
-.field label{display:block;font-size:0.82rem;color:#94a3b8;margin-bottom:6px;font-weight:600}
-.field input,.field select,.field textarea{width:100%;border:1.5px solid #334155;border-radius:9px;padding:11px 14px;font-size:0.95rem;color:#f1f5f9;background:var(--input);outline:none;transition:.2s}
-.field input:focus,.field select:focus{border-color:#3b82f6;background:var(--input)}
-.field select option{background:#1e293b}
+/* Sidebar */
+.sidebar-logo { padding: 20px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.sidebar-logo svg { flex-shrink: 0; }
+.sidebar-logo-text h1 { font-size: 1rem; font-weight: 800; color: var(--text); }
+.sidebar-logo-text p { font-size: 0.7rem; color: var(--text3); }
+.sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; color: var(--text2); transition: all .15s; text-decoration: none; }
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: rgba(79,142,247,.12); color: var(--accent); font-weight: 600; }
+.nav-item .icon { font-size: 1rem; width: 20px; text-align: center; }
+.sidebar-footer { padding: 12px 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.card-title { font-size: 0.9rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
 
 /* Buttons */
-.btn{border:none;border-radius:9px;padding:11px 18px;font-size:0.92rem;font-weight:700;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px}
-.btn-block{width:100%;justify-content:center}
-.btn-primary{background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;box-shadow:0 2px 12px rgba(59,130,246,.3)}
-.btn-success{background:#16a34a;color:#fff}
-.btn-danger{background:#dc2626;color:#fff}
-.btn-warn{background:#d97706;color:#fff}
-.btn-ghost{background:var(--card);color:#94a3b8;border:1px solid var(--border)}
-.btn-sm{padding:6px 12px;font-size:0.78rem;border-radius:7px}
-.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
-.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn { border: none; border-radius: var(--radius-sm); padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
+.btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(79,142,247,.3); }
+.btn-success { background: var(--green); color: #fff; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-warn { background: var(--yellow); color: #fff; }
+.btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+.btn-lg { padding: 12px 24px; font-size: 0.95rem; }
+.btn-block { width: 100%; justify-content: center; }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 
-/* Alerts */
-.alert{padding:11px 15px;border-radius:9px;font-size:0.85rem;margin-bottom:12px;border-right:4px solid}
-.alert-info{background:#1e3a5f;color:#93c5fd;border-color:#3b82f6}
-.alert-success{background:#14532d;color:#86efac;border-color:#22c55e}
-.alert-error{background:#450a0a;color:#fca5a5;border-color:#ef4444}
-.alert-warn{background:#451a03;color:#fcd34d;border-color:#f59e0b}
+/* Inputs */
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 0.8rem; color: var(--text2); margin-bottom: 5px; font-weight: 600; }
+.field input, .field select, .field textarea {
+  width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  padding: 9px 12px; font-size: 0.9rem; color: var(--text); background: var(--surface2);
+  outline: none; transition: border .2s; font-family: inherit;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+.field textarea { resize: vertical; min-height: 80px; }
+.field select option { background: var(--surface); }
+.input-row { display: flex; gap: 8px; }
+.input-row input { flex: 1; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 0.87rem; color: var(--text); background: var(--surface2); outline: none; }
+.input-row input:focus { border-color: var(--accent); }
 
 /* Badges */
-.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:0.75rem;font-weight:700}
-.badge-green{background:#14532d;color:#86efac;border:1px solid #16a34a}
-.badge-blue{background:#1e3a5f;color:#93c5fd;border:1px solid #3b82f6}
-.badge-red{background:#450a0a;color:#fca5a5;border:1px solid #dc2626}
-.badge-yellow{background:#451a03;color:#fcd34d;border:1px solid #d97706}
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: 0.73rem; font-weight: 700; }
+.badge-green { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+.badge-red { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.3); }
+.badge-blue { background: rgba(79,142,247,.15); color: var(--accent); border: 1px solid rgba(79,142,247,.3); }
+.badge-yellow { background: rgba(210,153,34,.15); color: var(--yellow); border: 1px solid rgba(210,153,34,.3); }
 
-/* Tabs */
-.tabs{display:flex;gap:4px;margin-bottom:18px;background:var(--input);border-radius:11px;padding:4px;flex-wrap:wrap;border:1px solid #1e293b}
-.tab{cursor:pointer;padding:8px 15px;font-size:0.83rem;color:var(--muted);border-radius:8px;font-weight:600;transition:.15s;white-space:nowrap}
-.tab.active{background:var(--card);color:#60a5fa;box-shadow:0 1px 6px rgba(0,0,0,.3)}
-.panel{display:none}.panel.active{display:block}
-
-/* Lists */
-.domain-list{list-style:none;padding:0;margin-top:8px;max-height:260px;overflow-y:auto}
-.domain-list li{display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:var(--input);border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;font-size:0.88rem}
-.domain-list li:hover{border-color:#334155}
-
-/* Table */
-table{width:100%;border-collapse:collapse;font-size:0.87rem}
-th,td{text-align:right;padding:11px 13px;border-bottom:1px solid #1e293b}
-th{color:var(--muted);font-weight:600;background:var(--input);font-size:0.8rem;text-transform:uppercase;letter-spacing:.04em}
-tr:hover td{background:var(--input)}
-
-/* Modal */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)}
-.modal-overlay.open{display:flex}
-.modal{background:var(--card);border-radius:16px;padding:26px;width:100%;max-width:620px;max-height:90vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.5);border:1px solid var(--border)}
-
-/* Separator */
-.sep{border:none;border-top:1px solid #1e293b;margin:16px 0}
-
-/* Platform picker */
-.platform-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
-.platform-card{border:2px solid #334155;border-radius:13px;padding:22px 16px;cursor:pointer;text-align:center;transition:.15s;background:var(--input)}
-.platform-card:hover{border-color:#3b82f6;background:#1e3a5f}
-.platform-card.selected{border-color:#3b82f6;background:#1e3a5f}
-.platform-card .pc{font-size:2.4rem;margin-bottom:8px}
-.platform-card h3{font-size:1rem;font-weight:700;color:#f1f5f9}
-.platform-card p{font-size:0.78rem;color:var(--muted);margin-top:3px}
-
-/* Loader */
-.loader{border:3px solid #334155;border-top:3px solid #3b82f6;border-radius:50%;width:20px;height:20px;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle}
-@keyframes spin{to{transform:rotate(360deg)}}
+/* Alerts */
+.alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.84rem; margin-bottom: 12px; border-right: 3px solid; }
+.alert-info { background: rgba(79,142,247,.1); color: #93c5fd; border-color: var(--accent); }
+.alert-success { background: rgba(63,185,80,.1); color: #86efac; border-color: var(--green); }
+.alert-error { background: rgba(248,81,73,.1); color: #fca5a5; border-color: var(--red); }
+.alert-warn { background: rgba(210,153,34,.1); color: #fcd34d; border-color: var(--yellow); }
 
 /* Toggle */
-.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #1e293b}
-.toggle-row:last-child{border-bottom:none}
-.toggle-row .tl{flex:1}
-.toggle-row label{font-size:0.9rem;color:#e2e8f0;font-weight:600;display:block}
-.toggle-row p{font-size:0.78rem;color:var(--muted);margin-top:2px}
-.toggle-wrap{position:relative;width:44px;height:24px;flex-shrink:0}
-.toggle-wrap input{opacity:0;width:0;height:0}
-.slider{position:absolute;cursor:pointer;inset:0;background:#334155;border-radius:24px;transition:.3s}
-.slider:before{content:"";position:absolute;height:18px;width:18px;right:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
-.toggle-wrap input:checked + .slider{background:#3b82f6}
-.toggle-wrap input:checked + .slider:before{transform:translateX(-20px)}
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.toggle-row:last-child { border-bottom: none; }
+.toggle-info label { font-size: 0.88rem; font-weight: 600; color: var(--text); display: block; }
+.toggle-info p { font-size: 0.77rem; color: var(--text3); margin-top: 2px; }
+.toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--border2); border-radius: 22px; cursor: pointer; transition: .25s; }
+.toggle-slider:before { content: ""; position: absolute; height: 16px; width: 16px; right: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .25s; }
+.toggle input:checked + .toggle-slider { background: var(--accent); }
+.toggle input:checked + .toggle-slider:before { transform: translateX(-18px); }
 
-/* Section title */
-.section-title{font-size:0.78rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;margin-top:14px}
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th { text-align: right; padding: 10px 12px; color: var(--text3); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
+td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
 
-/* Top bar */
-.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:wrap;gap:10px}
-.topbar-left h2{font-size:1.25rem;font-weight:800;color:#f1f5f9}
-.topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-title { font-size: 1.1rem; font-weight: 800; }
 
-/* Status bar */
-.status-bar{background:var(--input);border:1px solid #1e293b;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:0.82rem;color:var(--muted)}
-.status-bar .stat{display:flex;flex-direction:column;gap:2px}
-.status-bar .stat-val{font-size:1.1rem;font-weight:800;color:#60a5fa}
+/* Domain list */
+.domain-list { list-style: none; max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.domain-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem; }
+.domain-item:hover { border-color: var(--border2); }
 
-/* Input row */
-.input-row{display:flex;gap:8px;margin-bottom:10px}
-.input-row input{flex:1;border:1.5px solid #334155;border-radius:8px;padding:9px 12px;font-size:0.88rem;color:#f1f5f9;background:var(--input);outline:none}
-.input-row input:focus{border-color:#3b82f6}
+/* Views */
+.view { display: none; }
+.view.active { display: block; }
+
+/* Welcome screen */
+.welcome-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.welcome-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; width: 100%; max-width: 440px; box-shadow: var(--shadow); }
+.welcome-logo { text-align: center; margin-bottom: 28px; }
+.welcome-logo .shield { width: 64px; height: 64px; margin: 0 auto 12px; }
+.welcome-logo h1 { font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.welcome-logo p { font-size: 0.82rem; color: var(--text3); margin-top: 4px; }
+
+/* Stats */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.stat-val { font-size: 1.6rem; font-weight: 800; color: var(--accent); display: block; }
+.stat-label { font-size: 0.75rem; color: var(--text3); margin-top: 2px; }
+
+/* Platform cards */
+.platform-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.platform-card { border: 2px solid var(--border); border-radius: var(--radius); padding: 24px 16px; cursor: pointer; text-align: center; transition: all .15s; }
+.platform-card:hover { border-color: var(--accent); background: rgba(79,142,247,.06); }
+.platform-card .pc-icon { font-size: 2.2rem; margin-bottom: 8px; }
+.platform-card h3 { font-size: 0.95rem; font-weight: 700; }
+.platform-card p { font-size: 0.76rem; color: var(--text3); margin-top: 3px; }
+.platform-card.disabled { opacity: .45; cursor: not-allowed; }
+.platform-card.disabled:hover { border-color: var(--border); background: none; }
+
+/* Loader */
+.loader { border: 2px solid var(--border); border-top: 2px solid var(--accent); border-radius: 50%; width: 18px; height: 18px; animation: spin .7s linear infinite; display: inline-block; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Pause timer display */
+.pause-display { background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.3); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+.pause-time { font-size: 1.4rem; font-weight: 800; color: var(--yellow); font-variant-numeric: tabular-nums; }
+
+/* Page title */
+.page-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+.page-sub { font-size: 0.83rem; color: var(--text3); margin-bottom: 24px; }
+
+/* Unsaved indicator */
+.unsaved-bar { background: rgba(210,153,34,.12); border: 1px solid rgba(210,153,34,.3); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; display: none; align-items: center; justify-content: space-between; }
+.unsaved-bar.show { display: flex; }
+
+/* Password strength */
+.pwd-strength { height: 3px; border-radius: 3px; margin-top: 6px; transition: all .3s; }
 </style>
 </head>
 <body>
-<div class="card">
 
-<!-- ===== REGISTER ===== -->
-<div id="view-register" class="view active">
-  <div class="logo">
-    <div class="logo-icon">🛡️</div>
-    <div class="logo-text">
-      <h1>X-NET <span class="version-badge">v12</span></h1>
-      <p>מערכת סינון גלישה מתקדמת — DNS + Firewall + Hosts</p>
+<!-- ===== WELCOME / LOGIN ===== -->
+<div id="welcomeScreen" class="welcome-wrap">
+  <div class="welcome-card">
+    <div class="welcome-logo">
+      <svg class="shield" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <rect width="80" height="80" rx="18" fill="#161b27"/>
+        <path d="M40 10 L68 24 L68 45 C68 60 55 70 40 75 C25 70 12 60 12 45 L12 24 Z" fill="none" stroke="#4f8ef7" stroke-width="4"/>
+        <path d="M27 40 L36 49 L53 32" stroke="#4f8ef7" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h1>X-NET</h1>
+      <p>מערכת סינון גלישה מתקדמת</p>
     </div>
-  </div>
-  <div id="regAlert" class="alert" style="display:none"></div>
-  <div class="field"><label>שם מלא</label><input id="regName" placeholder="ישראל ישראלי"></div>
-  <div class="field"><label>מספר טלפון</label><input id="regPhone" placeholder="050-1234567"></div>
-  <div class="field"><label>כתובת אימייל (המזהה שלך)</label><input id="regEmail" placeholder="israel@gmail.com" autocomplete="email"></div>
-  <div id="adminPasswordFrame" class="field" style="display:none">
-    <label>🔐 קוד מנהל מערכת</label>
-    <input type="password" id="adminPassword" placeholder="קוד גישה">
-  </div>
-  <button id="regBtn" class="btn btn-primary btn-block" onclick="processRegistration()">⚡ הרשמה והורדת סקריפט התקנה</button>
-  <div style="margin-top:16px;text-align:center;font-size:0.82rem;color:var(--muted)">כבר רשום? <a href="#" onclick="tryAutoLogin()" style="color:#60a5fa;text-decoration:none;font-weight:600">עבור לאזור האישי ←</a></div>
-</div>
-
-<!-- ===== DASHBOARD ===== -->
-<div id="view-dashboard" class="view">
-  <div class="topbar">
-    <div class="topbar-left">
-      <h2 id="dashWelcome">שלום...</h2>
-      <span id="userDisplayEmail" style="font-size:0.8rem;color:var(--muted)"></span>
-    </div>
-    <div class="topbar-right">
-      <span id="installBadge" class="badge badge-blue" style="display:none">✅ מותקן</span>
-      <span id="noInstallBadge" class="badge badge-red" style="display:none">⚠️ לא מותקן</span>
-      <span id="pauseBadge" class="badge badge-yellow" style="display:none">⏳ מושהה</span>
-      <span class="badge badge-green">🛡️ מוגן</span>
-      <button class="btn btn-ghost btn-sm" onclick="refreshDashboard()">🔄</button>
-      <button class="btn btn-ghost btn-sm" onclick="logoutSession()">יציאה</button>
-    </div>
-  </div>
-
-  <div id="activePauseBanner" class="alert alert-warn" style="display:none"></div>
-  <div id="userDashAlert" class="alert" style="display:none"></div>
-
-  <button class="btn btn-primary btn-block" onclick="openPlatformModal()" style="margin-bottom:18px;font-size:1rem;padding:14px">
-    📥 הורד והפעל עדכון (החלת שינויים / הסרה / השהיה)
-  </button>
-
-  <div class="tabs">
-    <div class="tab active" onclick="switchTab('tab-sites',this)">🌐 מורשים</div>
-    <div class="tab" onclick="switchTab('tab-request',this)">📩 בקשת פתיחה</div>
-    <div class="tab" onclick="switchTab('tab-pause',this)">⏳ השהיה</div>
-    <div class="tab" onclick="switchTab('tab-uninstall',this)">🗑️ הסרה</div>
-  </div>
-
-  <div id="tab-sites" class="panel active">
-    <div class="section-title">אתרים פתוחים אישית</div>
-    <ul id="userAllowedSitesList" class="domain-list"><li><div class="loader"></div></li></ul>
-    <div id="userStatusFlags" style="margin-top:10px;font-size:0.82rem;color:var(--muted);background:var(--input);padding:10px;border-radius:8px;border:1px solid #1e293b"></div>
-  </div>
-
-  <div id="tab-request" class="panel">
-    <div class="section-title">בקשת פתיחת אתר</div>
-    <div class="field"><label>כתובת האתר</label><input id="reqUrl" placeholder="example.com"></div>
-    <div class="field"><label>סיבה (אופציונלי)</label><input id="reqReason" placeholder="לצורך עבודה..."></div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" style="flex:1" onclick="sendSiteRequestSystem()">📋 שלח למנהל</button>
-      <button class="btn btn-ghost" style="flex:1" onclick="sendSiteRequestEmail()">📧 שלח באימייל</button>
-    </div>
-    <div id="reqDone" class="alert alert-success" style="display:none;margin-top:10px">✅ נשלח! לאחר אישור המנהל לחץ על כפתור ההורדה למעלה.</div>
-  </div>
-
-  <div id="tab-pause" class="panel">
-    <div class="alert alert-warn">⚠️ השהיה מחייבת אישור מנהל מראש.</div>
-    <div class="field" style="margin-top:12px"><label>זמן מבוקש</label>
-      <select id="pauseTime">
-        <option value="15">15 דקות</option>
-        <option value="30">30 דקות</option>
-        <option value="60">שעה אחת</option>
-        <option value="120">שעתיים</option>
-        <option value="240">4 שעות</option>
-        <option value="480">8 שעות</option>
-        <option value="1440">24 שעות</option>
-      </select>
-    </div>
-    <div class="field"><label>סיבה</label><input id="pauseReason" placeholder="לצורך..."></div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-warn" style="flex:1" onclick="userRequestPause('system')">📋 שלח בקשה</button>
-      <button class="btn btn-ghost" style="flex:1" onclick="userRequestPause('email')">📧 באימייל</button>
-    </div>
-  </div>
-
-  <div id="tab-uninstall" class="panel">
-    <div id="uninstallInfoMsg" class="alert alert-info">הסרה מחייבת אישור מנהל.</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="btn btn-warn" style="flex:1" onclick="userRequestUninstall('system')">📋 בקש הסרה</button>
-      <button class="btn btn-ghost" style="flex:1" onclick="userRequestUninstall('email')">📧 באימייל</button>
-    </div>
-    <button id="btnUserUninstallApprove" class="btn btn-danger btn-block" onclick="openPlatformModal()" disabled>
-      הסר תוכנה מהמחשב (לאחר אישור)
-    </button>
-  </div>
-</div>
-
-<!-- ===== ADMIN ===== -->
-<div id="view-admin" class="view">
-  <div class="topbar">
-    <div class="topbar-left">
-      <h2>👑 פאנל ניהול <span class="version-badge">v12</span></h2>
-      <span style="font-size:0.8rem;color:var(--muted)">מנהל: meny85502@gmail.com</span>
-    </div>
-    <button class="btn btn-ghost btn-sm" onclick="logoutSession()">🔒 יציאה</button>
-  </div>
-
-  <div class="tabs">
-    <div class="tab active" onclick="switchAdminTab('admin-users-active',this)" id="tabActiveUsers">👥 פעילים</div>
-    <div class="tab" onclick="switchAdminTab('admin-users-removed',this)" id="tabRemovedUsers">🗑️ הוסרו</div>
-    <div class="tab" onclick="switchAdminTab('admin-base-sites',this)">🌍 אתרים בסיסיים</div>
-    <div class="tab" onclick="switchAdminTab('admin-create-user',this)">➕ משתמש חדש</div>
-  </div>
-
-  <div id="admin-users-active" class="panel active">
-    <div id="adminLoadingActive" style="text-align:center;padding:32px;color:var(--muted)"><div class="loader"></div> טוען...</div>
-    <table id="usersTableActive" style="display:none">
-      <thead><tr><th>שם</th><th>אימייל</th><th>סטטוס</th><th>פעולה</th></tr></thead>
-      <tbody id="adminUsersTableBodyActive"></tbody>
-    </table>
-  </div>
-
-  <div id="admin-users-removed" class="panel">
-    <table id="usersTableRemoved" style="display:none">
-      <thead><tr><th>שם</th><th>אימייל</th><th>סטטוס</th><th>פעולה</th></tr></thead>
-      <tbody id="adminUsersTableBodyRemoved"></tbody>
-    </table>
-    <div id="removedEmpty" style="text-align:center;padding:24px;color:#475569">אין משתמשים שהוסרו</div>
-  </div>
-
-  <div id="admin-base-sites" class="panel">
-    <div class="section-title">אתרים בסיסיים (Base Whitelist)</div>
-    <div class="alert alert-info" style="margin-bottom:12px">אתרים אלו פתוחים לכל משתמש שהופעל עבורו Base. <strong>meny0583285502.github.io</strong> תמיד פתוח (System).</div>
-    <div class="input-row">
-      <input id="newBaseDomainInput" placeholder="example.com">
-      <input id="newBaseDomainName" placeholder="שם האתר (אופציונלי)" style="flex:2">
-      <button class="btn btn-primary btn-sm" onclick="adminAddBaseDomain()">+ הוסף</button>
-    </div>
-    <div id="baseSitesLoading" style="display:none;text-align:center;padding:12px"><div class="loader"></div></div>
-    <ul id="baseDomainList" class="domain-list"></ul>
-  </div>
-
-  <div id="admin-create-user" class="panel">
-    <div class="section-title">יצירת משתמש ידנית</div>
-    <div class="field"><label>שם מלא</label><input id="newUserName" placeholder="ישראל ישראלי"></div>
-    <div class="field"><label>טלפון</label><input id="newUserPhone" placeholder="050-1234567"></div>
-    <div class="field"><label>אימייל</label><input id="newUserEmail" placeholder="user@gmail.com"></div>
-    <div style="background:var(--input);border:1px solid #1e293b;border-radius:10px;padding:14px;margin-bottom:14px">
-      <div class="toggle-row">
-        <div class="tl"><label>אתרים בסיסיים</label><p>גישה לרשימת Base הכללית</p></div>
-        <label class="toggle-wrap"><input type="checkbox" id="newUserBase"><span class="slider"></span></label>
+    <div id="loginAlert" class="alert" style="display:none"></div>
+    <div id="loginForm">
+      <div class="field"><label>אימייל</label><input id="loginEmail" type="email" placeholder="your@email.com" autocomplete="email"></div>
+      <div id="loginPassField" class="field" style="display:none"><label>קוד גישה</label><input id="loginPass" type="password" placeholder="••••••"></div>
+      <div id="loginRegFields" style="display:none">
+        <div class="field"><label>שם מלא</label><input id="loginName" placeholder="ישראל ישראלי"></div>
+        <div class="field"><label>טלפון</label><input id="loginPhone" placeholder="050-0000000"></div>
       </div>
-      <div class="toggle-row">
-        <div class="tl"><label>גוגל ו-YouTube</label><p>מאפשר גישה ל-google.com</p></div>
-        <label class="toggle-wrap"><input type="checkbox" id="newUserGoogle"><span class="slider"></span></label>
+      <button id="loginBtn" class="btn btn-primary btn-block btn-lg" onclick="handleLogin()" style="margin-top:4px">המשך ←</button>
+      <div style="text-align:center;margin-top:14px;font-size:0.8rem;color:var(--text3)">
+        <span id="loginToggleText">משתמש חדש? <a href="#" onclick="toggleRegMode()" style="color:var(--accent);text-decoration:none">הרשמה</a></span>
       </div>
     </div>
-    <button class="btn btn-primary btn-block" onclick="adminCreateUser()">➕ צור משתמש</button>
-    <div id="createUserAlert" class="alert" style="display:none;margin-top:10px"></div>
   </div>
 </div>
 
-<!-- ===== MODAL: ניהול משתמש ===== -->
-<div class="modal-overlay" id="adminModalOverlay" onclick="if(event.target===this)closeAdminModal()">
+<!-- ===== USER DASHBOARD ===== -->
+<div id="userApp" class="app" style="display:none">
+  <main class="main">
+    <div id="userPauseBanner" class="alert alert-warn" style="display:none;margin-bottom:16px"></div>
+    <div id="userAlert" class="alert" style="display:none"></div>
+
+    <!-- Download button -->
+    <div class="card" style="background:linear-gradient(135deg,rgba(79,142,247,.12),rgba(124,95,247,.12));border-color:rgba(79,142,247,.3)">
+      <button class="btn btn-primary btn-block btn-lg" onclick="openPlatformModal()" style="font-size:1rem">
+        📥 הורד והפעל עדכון
+      </button>
+      <p style="text-align:center;font-size:0.78rem;color:var(--text3);margin-top:8px">לחץ בכל פעם שהמנהל שינה משהו</p>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="nav-item active" id="utab-sites" onclick="switchUserTab('sites',this)" style="flex:1;justify-content:center">🌐 אתרים</div>
+      <div class="nav-item" id="utab-request" onclick="switchUserTab('request',this)" style="flex:1;justify-content:center">📩 בקשה</div>
+      <div class="nav-item" id="utab-pause" onclick="switchUserTab('pause',this)" style="flex:1;justify-content:center">⏳ השהיה</div>
+      <div class="nav-item" id="utab-uninstall" onclick="switchUserTab('uninstall',this)" style="flex:1;justify-content:center">🗑️ הסרה</div>
+    </div>
+
+    <div id="upanel-sites" class="view active">
+      <div class="card">
+        <div class="card-header"><span class="card-title">אתרים פתוחים</span><span id="uDomainCount" class="badge badge-blue">0</span></div>
+        <ul id="userSitesList" class="domain-list"></ul>
+        <div id="userFlags" style="margin-top:12px;font-size:0.8rem;color:var(--text3);padding:10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)"></div>
+      </div>
+    </div>
+
+    <div id="upanel-request" class="view">
+      <div class="card">
+        <div class="card-header"><span class="card-title">בקשת פתיחת אתר</span></div>
+        <div class="field"><label>כתובת האתר</label><input id="reqUrl" placeholder="example.com"></div>
+        <div class="field"><label>סיבה</label><input id="reqReason" placeholder="לצורך..."></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" style="flex:1" onclick="sendSiteRequest()">📋 שלח למנהל</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="sendSiteEmail()">📧 אימייל</button>
+        </div>
+        <div id="reqDone" class="alert alert-success" style="display:none;margin-top:10px">✅ נשלח!</div>
+      </div>
+    </div>
+
+    <div id="upanel-pause" class="view">
+      <div class="card">
+        <div class="card-header"><span class="card-title">בקשת השהיה</span></div>
+        <div class="alert alert-warn">השהיה מחייבת אישור מנהל מראש</div>
+        <div class="field" style="margin-top:12px"><label>זמן</label>
+          <select id="pauseTime">
+            <option value="15">15 דקות</option>
+            <option value="30">30 דקות</option>
+            <option value="60">שעה</option>
+            <option value="120">שעתיים</option>
+            <option value="240">4 שעות</option>
+            <option value="480">8 שעות</option>
+            <option value="1440">24 שעות</option>
+          </select>
+        </div>
+        <div class="field"><label>סיבה</label><input id="pauseReason" placeholder="לצורך..."></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-warn" style="flex:1" onclick="requestPause('system')">📋 שלח בקשה</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="requestPause('email')">📧 אימייל</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="upanel-uninstall" class="view">
+      <div class="card">
+        <div class="card-header"><span class="card-title">הסרת תוכנה</span></div>
+        <div id="uninstallMsg" class="alert alert-info">הסרה מחייבת אישור מנהל</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn btn-warn" style="flex:1" onclick="requestUninstall('system')">📋 בקש הסרה</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="requestUninstall('email')">📧 אימייל</button>
+        </div>
+        <button id="btnUninstallApproved" class="btn btn-danger btn-block" onclick="openPlatformModal()" disabled>הסר מהמחשב (לאחר אישור)</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="32" height="32" viewBox="0 0 80 80"><rect width="80" height="80" rx="14" fill="#161b27"/><path d="M40 10 L68 24 L68 45 C68 60 55 70 40 75 C25 70 12 60 12 45 L12 24 Z" fill="none" stroke="#4f8ef7" stroke-width="4"/><path d="M27 40 L36 49 L53 32" stroke="#4f8ef7" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="sidebar-logo-text"><h1>X-NET</h1><p id="userSidebarName">טוען...</p></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div style="padding:6px 12px;font-size:0.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">אזור אישי</div>
+      <a class="nav-item active" onclick="switchUserTab('sites',this)"><span class="icon">🌐</span>אתרים פתוחים</a>
+      <a class="nav-item" onclick="switchUserTab('request',this)"><span class="icon">📩</span>בקשת פתיחה</a>
+      <a class="nav-item" onclick="switchUserTab('pause',this)"><span class="icon">⏳</span>בקשת השהיה</a>
+      <a class="nav-item" onclick="switchUserTab('uninstall',this)"><span class="icon">🗑️</span>הסרה</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="userStatusBadge" class="badge badge-green" style="margin-bottom:6px;justify-content:center">🛡️ מוגן</div>
+      <button class="btn btn-ghost btn-sm btn-block" onclick="toggleTheme()">🌙 כהה / בהיר</button>
+      <button class="btn btn-ghost btn-sm btn-block" onclick="logout()">יציאה</button>
+    </div>
+  </aside>
+</div>
+
+<!-- ===== ADMIN DASHBOARD ===== -->
+<div id="adminApp" class="app" style="display:none">
+  <main class="main">
+    <div id="adminAlert" class="alert" style="display:none"></div>
+
+    <!-- Users tab -->
+    <div id="apanel-users" class="view active">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div><div class="page-title">משתמשים</div><div class="page-sub">ניהול כל הפרופילים</div></div>
+        <button class="btn btn-primary" onclick="openCreateUser()">+ משתמש חדש</button>
+      </div>
+      <div class="stats-row" id="adminStats">
+        <div class="stat-card"><span class="stat-val" id="statTotal">-</span><span class="stat-label">סה"כ משתמשים</span></div>
+        <div class="stat-card"><span class="stat-val" id="statActive">-</span><span class="stat-label">פעילים</span></div>
+        <div class="stat-card"><span class="stat-val" id="statPending">-</span><span class="stat-label">ממתינים</span></div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="usersLoading" style="padding:32px;text-align:center;color:var(--text3)"><div class="loader"></div> טוען...</div>
+        <div class="table-wrap"><table id="usersTable" style="display:none">
+          <thead><tr><th>שם</th><th>מזהה</th><th>סטטוס</th><th>sync אחרון</th><th>פעולה</th></tr></thead>
+          <tbody id="usersBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- Base sites tab -->
+    <div id="apanel-base" class="view">
+      <div class="page-title">אתרים בסיסיים</div>
+      <div class="page-sub">פתוחים לכל משתמש עם Base מופעל</div>
+      <div id="baseUnsaved" class="unsaved-bar">
+        <span>⚠️ יש שינויים שלא נשמרו</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="loadBase()">בטל</button>
+          <button class="btn btn-success btn-sm" onclick="saveBase()">💾 שמור הכל</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">הוסף אתר</span></div>
+        <div class="input-row" style="margin-bottom:8px">
+          <input id="newBaseUrl" placeholder="example.com">
+          <input id="newBaseName" placeholder="שם (אופציונלי)" style="flex:2">
+          <button class="btn btn-primary btn-sm" onclick="addBaseDomain()">+ הוסף</button>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>ייבוא מרשימה (שורה לכל אתר)</label>
+          <textarea id="bulkImport" placeholder="example.com&#10;another.com&#10;..."></textarea>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="importBulk()" style="margin-bottom:12px">📋 ייבא רשימה</button>
+        <div id="baseLoading" style="display:none;text-align:center;padding:12px"><div class="loader"></div></div>
+        <ul id="baseDomainList" class="domain-list"></ul>
+      </div>
+    </div>
+
+    <!-- Settings tab -->
+    <div id="apanel-settings" class="view">
+      <div class="page-title">הגדרות מנהל</div>
+      <div class="page-sub">הגדרות מערכת ואבטחה</div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">שינוי סיסמה</span></div>
+        <div class="field"><label>סיסמה נוכחית</label><input type="password" id="curPass" placeholder="••••••"></div>
+        <div class="field">
+          <label>סיסמה חדשה</label>
+          <input type="password" id="newPass" placeholder="••••••" oninput="checkPwdStrength()">
+          <div id="pwdStrength" class="pwd-strength"></div>
+        </div>
+        <div class="field"><label>אישור סיסמה חדשה</label><input type="password" id="newPass2" placeholder="••••••"></div>
+        <button class="btn btn-primary" onclick="changePassword()">🔐 שנה סיסמה</button>
+        <div id="pwdAlert" class="alert" style="display:none;margin-top:10px"></div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="32" height="32" viewBox="0 0 80 80"><rect width="80" height="80" rx="14" fill="#161b27"/><path d="M40 10 L68 24 L68 45 C68 60 55 70 40 75 C25 70 12 60 12 45 L12 24 Z" fill="none" stroke="#4f8ef7" stroke-width="4"/><path d="M27 40 L36 49 L53 32" stroke="#4f8ef7" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="sidebar-logo-text"><h1>X-NET</h1><p>פאנל ניהול</p></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div style="padding:6px 12px;font-size:0.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">ניהול</div>
+      <a class="nav-item active" onclick="switchAdminTab('users',this)"><span class="icon">👥</span>משתמשים</a>
+      <a class="nav-item" onclick="switchAdminTab('base',this)"><span class="icon">🌍</span>אתרים בסיסיים</a>
+      <a class="nav-item" onclick="switchAdminTab('settings',this)"><span class="icon">⚙️</span>הגדרות</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn btn-ghost btn-sm btn-block" onclick="toggleTheme()">🌙 כהה / בהיר</button>
+      <button class="btn btn-ghost btn-sm btn-block" onclick="logout()">🔒 יציאה</button>
+    </div>
+  </aside>
+</div>
+
+<!-- ===== MODAL: Edit User ===== -->
+<div class="modal-overlay" id="editUserModal" onclick="if(event.target===this)closeModal('editUserModal')">
   <div class="modal">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-      <h3 id="editUserName" style="font-size:1.1rem;font-weight:800;color:#f1f5f9">ניהול משתמש</h3>
-      <button class="btn btn-ghost btn-sm" onclick="closeAdminModal()">✕</button>
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="editUserTitle">משתמש</div>
+        <div id="editUserMeta" style="font-size:0.78rem;color:var(--text3);margin-top:2px"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('editUserModal')">✕</button>
+    </div>
+    <div id="editUserAlerts"></div>
+
+    <!-- Profile info -->
+    <div class="card" style="margin-bottom:14px;padding:14px">
+      <div class="card-header" style="margin-bottom:10px"><span class="card-title">📊 פרטי פרופיל</span></div>
+      <div id="editUserInfo" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem;color:var(--text2)"></div>
     </div>
 
-    <div id="adminUserAlerts" style="margin-bottom:12px"></div>
-
-    <!-- הרשאות -->
-    <div style="background:var(--input);border:1px solid #1e293b;border-radius:11px;padding:16px;margin-bottom:16px">
-      <div class="section-title" style="margin-top:0">⚙️ הרשאות גלישה</div>
+    <!-- Permissions -->
+    <div class="card" style="margin-bottom:14px;padding:14px">
+      <div class="card-header" style="margin-bottom:4px"><span class="card-title">⚙️ הרשאות</span></div>
       <div class="toggle-row">
-        <div class="tl"><label>אתרים בסיסיים (Base)</label><p>גישה לרשימת האתרים הכללית</p></div>
-        <label class="toggle-wrap"><input type="checkbox" id="adminBaseSitesToggle" onchange="adminToggleFeatures()"><span class="slider"></span></label>
+        <div class="toggle-info"><label>אתרים בסיסיים</label><p>גישה לרשימת Base הכללית</p></div>
+        <label class="toggle"><input type="checkbox" id="eBase" onchange="markUnsaved()"><span class="toggle-slider"></span></label>
       </div>
       <div class="toggle-row">
-        <div class="tl"><label>גוגל ו-YouTube</label><p>מאפשר גישה ל-google.com + ggpht.com</p></div>
-        <label class="toggle-wrap"><input type="checkbox" id="adminGoogleSearchToggle" onchange="adminToggleFeatures()"><span class="slider"></span></label>
+        <div class="toggle-info"><label>גוגל ו-YouTube</label><p>google.com + youtube.com</p></div>
+        <label class="toggle"><input type="checkbox" id="eGoogle" onchange="markUnsaved()"><span class="toggle-slider"></span></label>
       </div>
     </div>
 
-    <!-- אתרים אישיים -->
-    <div class="section-title">🌐 אתרים אישיים</div>
-    <div class="input-row" style="margin-bottom:8px">
-      <input id="newDomainInput" placeholder="example.com">
-      <input id="newDomainName" placeholder="שם (אופציונלי)" style="flex:2">
-      <button class="btn btn-primary btn-sm" onclick="adminAddDomain()">+ הוסף</button>
+    <!-- Sites -->
+    <div class="card" style="margin-bottom:14px;padding:14px">
+      <div class="card-header" style="margin-bottom:8px"><span class="card-title">🌐 אתרים אישיים</span></div>
+      <div class="input-row" style="margin-bottom:8px">
+        <input id="eDomainUrl" placeholder="example.com">
+        <input id="eDomainName" placeholder="שם (אופציונלי)" style="flex:2">
+        <button class="btn btn-primary btn-sm" onclick="addEditDomain()">+ הוסף</button>
+      </div>
+      <ul id="editDomainList" class="domain-list"></ul>
     </div>
-    <ul id="editUserDomainList" class="domain-list"></ul>
 
-    <hr class="sep">
+    <!-- Unsaved indicator -->
+    <div id="editUnsaved" class="unsaved-bar" style="margin-bottom:14px">
+      <span>⚠️ יש שינויים שלא נשמרו</span>
+      <button class="btn btn-success btn-sm" onclick="saveEditUser()">💾 שמור</button>
+    </div>
 
-    <!-- פעולות -->
-    <div class="section-title">⚡ פעולות מנהל</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
-      <select id="adminPauseTime" style="background:var(--input);border:1.5px solid #334155;color:#f1f5f9;border-radius:8px;padding:8px 12px;font-size:0.88rem">
-        <option value="15">15 דקות</option>
-        <option value="30">30 דקות</option>
-        <option value="60">שעה</option>
-        <option value="120">שעתיים</option>
-        <option value="240">4 שעות</option>
-        <option value="480">8 שעות</option>
-        <option value="1440">24 שעות</option>
-      </select>
-      <button class="btn btn-warn" style="flex:1" onclick="adminTriggerPause()">⏳ הפעל השהיה</button>
-      <button class="btn btn-ghost btn-sm" onclick="adminCancelPause()">בטל השהיה</button>
+    <!-- Actions -->
+    <div class="card" style="padding:14px">
+      <div class="card-header" style="margin-bottom:10px"><span class="card-title">⚡ פעולות</span></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <select id="ePauseTime" style="background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 10px;font-size:0.85rem;flex:1">
+          <option value="15">15 דקות</option>
+          <option value="30">30 דקות</option>
+          <option value="60">שעה</option>
+          <option value="120">שעתיים</option>
+          <option value="240">4 שעות</option>
+          <option value="480">8 שעות</option>
+          <option value="1440">24 שעות</option>
+        </select>
+        <button class="btn btn-warn" onclick="adminPause()">⏳ השהה</button>
+        <button class="btn btn-ghost btn-sm" onclick="adminCancelPause()">בטל השהיה</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="adminApproveUninstall()">✅ אשר הסרה</button>
+        <button class="btn btn-danger" style="flex:1" onclick="adminDeleteUser()">🗑️ מחק פרופיל</button>
+      </div>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-ghost" style="flex:1" onclick="adminDownloadForUser()">📥 הורד BAT למשתמש</button>
-      <button class="btn btn-danger" style="flex:1" onclick="adminTriggerUninstall()">🗑️ אשר הסרה</button>
+  </div>
+</div>
+
+<!-- ===== MODAL: Create User ===== -->
+<div class="modal-overlay" id="createUserModal" onclick="if(event.target===this)closeModal('createUserModal')">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><div class="modal-title">+ משתמש חדש</div><button class="btn btn-ghost btn-sm" onclick="closeModal('createUserModal')">✕</button></div>
+    <div class="field"><label>שם מלא</label><input id="cuName" placeholder="ישראל ישראלי"></div>
+    <div class="field"><label>טלפון</label><input id="cuPhone" placeholder="050-0000000"></div>
+    <div class="field"><label>אימייל / מזהה</label><input id="cuEmail" placeholder="user@gmail.com"></div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px">
+      <div class="toggle-row">
+        <div class="toggle-info"><label>אתרים בסיסיים</label><p>ברירת מחדל: פעיל</p></div>
+        <label class="toggle"><input type="checkbox" id="cuBase" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info"><label>גוגל ו-YouTube</label><p>ברירת מחדל: פעיל</p></div>
+        <label class="toggle"><input type="checkbox" id="cuGoogle" checked><span class="toggle-slider"></span></label>
+      </div>
     </div>
+    <button class="btn btn-primary btn-block" onclick="createUser()">➕ צור משתמש</button>
+    <div id="cuAlert" class="alert" style="display:none;margin-top:10px"></div>
   </div>
 </div>
 
 <!-- ===== MODAL: Platform ===== -->
-<div class="modal-overlay" id="platformModalOverlay" onclick="if(event.target===this)closePlatformModal()">
-  <div class="modal" style="max-width:480px">
-    <div style="text-align:center;margin-bottom:22px">
-      <div style="font-size:2.5rem;margin-bottom:10px">📲</div>
-      <h3 style="font-size:1.15rem;font-weight:800;color:#f1f5f9">בחר פלטפורמה</h3>
-      <p style="font-size:0.83rem;color:var(--muted);margin-top:5px">על איזה מכשיר להתקין את X-NET?</p>
-    </div>
+<div class="modal-overlay" id="platformModal" onclick="if(event.target===this)closeModal('platformModal')">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header"><div class="modal-title">📲 בחר פלטפורמה</div><button class="btn btn-ghost btn-sm" onclick="closeModal('platformModal')">✕</button></div>
     <div class="platform-grid">
-      <div class="platform-card" onclick="selectPlatform('windows')">
-        <div class="pc">🖥️</div>
-        <h3>Windows</h3>
-        <p>מחשב נייד / שולחני</p>
+      <div class="platform-card" onclick="downloadForPlatform('windows')">
+        <div class="pc-icon">🖥️</div><h3>Windows</h3><p>מחשב נייד / שולחני</p>
       </div>
-      <div class="platform-card" style="opacity:.45;cursor:not-allowed">
-        <div class="pc">📱</div>
-        <h3>Android</h3>
-        <p style="color:#ef4444;font-weight:700">בקרוב</p>
+      <div class="platform-card disabled">
+        <div class="pc-icon">📱</div><h3>Android</h3><p style="color:var(--red);font-weight:700">בקרוב</p>
       </div>
     </div>
-    <button class="btn btn-ghost btn-block" style="margin-top:16px" onclick="closePlatformModal()">ביטול</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:14px" onclick="closeModal('platformModal')">ביטול</button>
   </div>
 </div>
 
 <script>
+// ── Config ──
 const ADMIN_EMAIL = "meny85502@gmail.com";
-const ADMIN_PASS  = "5502";
 const GH_OWNER   = "meny0583285502";
 const GH_REPO    = "X-NET";
 const GH_TOKEN   = ["ghp_","PuFjv7joXh","Tc5LLsZ71R","RCtVzf6Vw80WFkIE"].join("");
 
-let currentUserEmail = "";
-let currentUserData  = null;
-let currentUserFileSha = "";
-let currentAdminEditingEmail = "";
-let baseWhitelistData = null;
-let baseWhitelistSha  = "";
+let currentUser = null, currentUserSha = "", currentUserEmail = "";
+let adminEditEmail = "", adminEditData = null, adminEditSha = "";
+let baseData = null, baseSha = "", baseModified = false;
+let editModified = false;
+let isRegMode = false;
 
-const b64e = str => btoa(unescape(encodeURIComponent(str)));
-const b64d = str => decodeURIComponent(escape(atob(str)));
-function fmtDomain(s){ return (s||"").replace(/^[/]*https?:\/\//i,"").replace(/^www\./i,"").replace(/^\//,"").split("/")[0].split("?")[0].trim().toLowerCase(); }
+// ── Theme ──
+function toggleTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  document.documentElement.setAttribute('data-theme', isLight ? '' : 'light');
+  localStorage.setItem('xnet_theme', isLight ? 'dark' : 'light');
+}
+(function(){ if(localStorage.getItem('xnet_theme')==='light') document.documentElement.setAttribute('data-theme','light'); })();
 
-// ── Init ──
-window.onload = function(){
-  document.getElementById("regEmail").addEventListener("input", e=>{
-    const v = e.target.value.trim().toLowerCase();
-    document.getElementById("adminPasswordFrame").style.display =
-      (v === ADMIN_EMAIL.toLowerCase() || v === "5502") ? "block" : "none";
-  });
-  const p = new URLSearchParams(location.search);
-  const u = p.get("user");
-  if(p.get("installed")==="1" && u){
-    localStorage.setItem("xnet_install_status", JSON.stringify({installed:true,ts:new Date().toISOString()}));
-    history.replaceState({},"", location.pathname + "?user=" + encodeURIComponent(u));
-  }
-  if(u){ localStorage.setItem("xnet_user_email",u); loadUserDashboard(u); return; }
-  const saved = localStorage.getItem("xnet_user_email");
-  if(saved){
-    if(saved.toLowerCase()===ADMIN_EMAIL.toLowerCase()||saved==="5502"){ showView("view-admin"); loadAdminData(); }
-    else loadUserDashboard(saved);
-  } else showView("view-register");
-};
-
-function tryAutoLogin(){
-  const saved = localStorage.getItem("xnet_user_email");
-  if(saved){ loadUserDashboard(saved); return; }
-  const email = prompt("הכנס את האימייל שלך:");
-  if(email){ localStorage.setItem("xnet_user_email",email.trim()); loadUserDashboard(email.trim()); }
+// ── Helpers ──
+const b64d = s => decodeURIComponent(escape(atob(s)));
+const b64e = s => btoa(unescape(encodeURIComponent(s)));
+function fmtDomain(s){ return (s||"").replace(/^https?:\/\//i,"").replace(/^www\./i,"").replace(/\/.*$/,"").trim().toLowerCase(); }
+function uiAlert(id,msg,type="error"){ const el=document.getElementById(id); el.style.display="block"; el.className="alert alert-"+type; el.innerText=msg; setTimeout(()=>el.style.display="none",5000); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function switchUserTab(tab,el){
+  document.querySelectorAll('#userApp .nav-item').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('[id^=upanel-]').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('[id^=utab-]').forEach(x=>x.classList.remove('active'));
+  document.getElementById('upanel-'+tab).classList.add('active');
+  if(el) el.classList.add('active');
 }
-function toggleTheme(){
-  const cur=document.documentElement.getAttribute('data-theme');
-  const next=cur==='light'?'dark':'light';
-  document.documentElement.setAttribute('data-theme',next==='dark'?'':next);
-  document.getElementById('themeBtn').innerText=next==='light'?'🌙':'☀️';
-  localStorage.setItem('xnet_theme',next);
+function switchAdminTab(tab,el){
+  document.querySelectorAll('#adminApp .nav-item').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('[id^=apanel-]').forEach(x=>x.classList.remove('active'));
+  document.getElementById('apanel-'+tab).classList.add('active');
+  if(el) el.classList.add('active');
+  if(tab==='base') loadBase();
 }
-// Apply saved theme
-(function(){ const t=localStorage.getItem('xnet_theme'); if(t==='light'){document.documentElement.setAttribute('data-theme','light');setTimeout(()=>{const b=document.getElementById('themeBtn');if(b)b.innerText='🌙';},100);} })();
-
-async function adminDeleteProfile(email, sha){
-  if(!confirm('למחוק לצמיתות את '+email+'?')) return;
-  try{
-    const safe=email.replace('@','_at_').replace(/\./g,'_dot_');
-    const tok=GH_TOKEN;
-    const r=await fetch('https://api.github.com/repos/'+GH_OWNER+'/'+GH_REPO+'/contents/profiles/'+safe+'.json',{
-      method:'DELETE',
-      headers:{'Authorization':'token '+tok,'Content-Type':'application/json'},
-      body:JSON.stringify({message:'Delete profile '+email,sha:sha})
-    });
-    if(r.ok){ alert('נמחק!'); loadAdminData(); }
-    else { alert('שגיאה: '+(await r.text())); }
-  }catch(e){ alert('שגיאה: '+e.message); }
-}
-
-function logoutSession(){ localStorage.removeItem("xnet_user_email"); location.reload(); }
-function showView(id){ document.querySelectorAll(".view").forEach(v=>v.classList.remove("active")); document.getElementById(id).classList.add("active"); }
-function switchTab(id,el){
-  document.querySelectorAll("#view-dashboard .tab").forEach(t=>t.classList.remove("active"));
-  document.querySelectorAll("#view-dashboard .panel").forEach(p=>p.classList.remove("active"));
-  el.classList.add("active"); document.getElementById(id).classList.add("active");
-}
-function switchAdminTab(id,el){
-  document.querySelectorAll("#view-admin .tab").forEach(t=>t.classList.remove("active"));
-  document.querySelectorAll("#view-admin .panel").forEach(p=>p.classList.remove("active"));
-  el.classList.add("active"); document.getElementById(id).classList.add("active");
-  if(id==="admin-base-sites") loadAdminBaseSites();
-  if(id==="admin-users-active"||id==="admin-users-removed") loadAdminData();
-}
-function uiAlert(id,msg,type="error"){
-  const el=document.getElementById(id); el.style.display="block";
-  el.className="alert alert-"+type; el.innerText=msg;
-  setTimeout(()=>el.style.display="none",6000);
-}
+function markUnsaved(){ editModified=true; document.getElementById('editUnsaved').classList.add('show'); }
 
 // ── GitHub API ──
 async function ghGet(path){
-  const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{headers:{"Authorization":"token "+GH_TOKEN}});
-  if(!r.ok) throw new Error("לא נמצא: "+path);
+  const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{headers:{Authorization:"token "+GH_TOKEN,"User-Agent":"XNET"}});
+  if(!r.ok) throw new Error(r.status+" "+path);
   return r.json();
 }
 async function ghPut(path,content,sha,msg){
-  const body={message:msg,content:b64e(content)};
-  if(sha) body.sha=sha;
-  const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{method:"PUT",headers:{"Authorization":"token "+GH_TOKEN,"Content-Type":"application/json"},body:JSON.stringify(body)});
-  const d=await r.json(); return d.content.sha;
+  const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{
+    method:"PUT",headers:{Authorization:"token "+GH_TOKEN,"Content-Type":"application/json","User-Agent":"XNET"},
+    body:JSON.stringify({message:msg,content:b64e(content),sha:sha||undefined})
+  });
+  const d=await r.json(); if(!r.ok) throw new Error(d.message); return d.content.sha;
 }
-async function fetchUserJson(email){
-  const safe=email.replace("@","_at_").replace(/\./g,"_dot_");
-  const d=await ghGet("profiles/"+safe+".json");
-  return{sha:d.sha,content:JSON.parse(b64d(d.content))};
+async function ghDelete(path,sha,msg){
+  const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{
+    method:"DELETE",headers:{Authorization:"token "+GH_TOKEN,"Content-Type":"application/json","User-Agent":"XNET"},
+    body:JSON.stringify({message:msg,sha:sha})
+  });
+  if(!r.ok){ const d=await r.json(); throw new Error(d.message); }
 }
-async function updateUserJson(email,data,sha,msg){
-  const safe=email.replace("@","_at_").replace(/\./g,"_dot_");
-  return ghPut("profiles/"+safe+".json", JSON.stringify(data,null,2), sha, msg);
+function safeEmail(e){ return e.replace("@","_at_").replace(/\./g,"_dot_"); }
+async function fetchProfile(email){ const d=await ghGet("profiles/"+safeEmail(email)+".json"); return{sha:d.sha,data:JSON.parse(b64d(d.content))}; }
+async function saveProfile(email,data,sha,msg){ return ghPut("profiles/"+safeEmail(email)+".json",JSON.stringify(data,null,2),sha,msg||"update"); }
+
+// ── Admin password ──
+async function getAdminPass(){
+  try{ const d=await ghGet("admin_config.json"); const c=JSON.parse(b64d(d.content)); return{pass:c.password,sha:d.sha}; }
+  catch{ return{pass:"5502",sha:null}; }
 }
 
-// ── BAT Download ──
-function downloadInstallerScript(email){
-  // PS script: silent background install - no visible window
-  const ps = [
-    "$ErrorActionPreference = 'SilentlyContinue'",
-    "$url = 'https://raw.githubusercontent.com/meny0583285502/X-NET/main/install.ps1'",
-    "$out = \"$env:TEMP\\xnet_install_bg.ps1\"",
-    "try { Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing -ErrorAction Stop } catch { exit 1 }",
-    "& $out -UserEmail '" + email + "' -Silent"
+// ── Login ──
+let loginStep = 0;
+function toggleRegMode(){ isRegMode=!isRegMode; document.getElementById('loginRegFields').style.display=isRegMode?'block':'none'; document.getElementById('loginToggleText').innerHTML=isRegMode?'כבר רשום? <a href="#" onclick="toggleRegMode()" style="color:var(--accent);text-decoration:none">כניסה</a>':'משתמש חדש? <a href="#" onclick="toggleRegMode()" style="color:var(--accent);text-decoration:none">הרשמה</a>'; document.getElementById('loginBtn').innerText=isRegMode?'הרשמה ←':'המשך ←'; }
+
+async function handleLogin(){
+  const email=document.getElementById('loginEmail').value.trim().toLowerCase();
+  if(!email){ uiAlert('loginAlert','חסר אימייל'); return; }
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true; btn.innerHTML='<div class="loader"></div>';
+
+  // Admin check
+  if(email===ADMIN_EMAIL.toLowerCase()||email==="admin"){
+    const passField=document.getElementById('loginPassField');
+    if(passField.style.display==='none'){ passField.style.display='block'; btn.disabled=false; btn.innerText='כניסה ←'; return; }
+    const pass=document.getElementById('loginPass').value;
+    const cfg=await getAdminPass();
+    if(pass===cfg.pass){ localStorage.setItem('xnet_user',ADMIN_EMAIL); showAdmin(); }
+    else{ uiAlert('loginAlert','קוד שגוי'); btn.disabled=false; btn.innerText='כניסה ←'; }
+    return;
+  }
+
+  if(isRegMode){
+    // Register
+    const name=document.getElementById('loginName').value.trim();
+    const phone=document.getElementById('loginPhone').value.trim();
+    if(!name){ uiAlert('loginAlert','חסר שם'); btn.disabled=false; btn.innerText='הרשמה ←'; return; }
+    const data={name,phone,email,registered_at:new Date().toISOString(),base_sites_enabled:true,google_search_enabled:true,allowed_domains:["meny0583285502.github.io"],requests:{pause:null,uninstall_requested:false,uninstall_approved:false,site_request:null}};
+    try{
+      await ghPut("profiles/"+safeEmail(email)+".json",JSON.stringify(data,null,2),null,"New user: "+name);
+      localStorage.setItem('xnet_user',email);
+      openPlatformModal();
+      showUser(email,data,"");
+    }catch(e){ uiAlert('loginAlert','שגיאה: '+e.message); btn.disabled=false; btn.innerText='הרשמה ←'; }
+    return;
+  }
+
+  // Existing user login
+  try{
+    const{sha,data}=await fetchProfile(email);
+    localStorage.setItem('xnet_user',email);
+    showUser(email,data,sha);
+  }catch(e){ uiAlert('loginAlert','מזהה לא נמצא. משתמש חדש? לחץ הרשמה'); btn.disabled=false; btn.innerText='המשך ←'; }
+}
+
+// ── Show views ──
+function showWelcome(){ document.getElementById('welcomeScreen').style.display='flex'; document.getElementById('userApp').style.display='none'; document.getElementById('adminApp').style.display='none'; }
+function showUser(email,data,sha){
+  currentUserEmail=email; currentUser=data; currentUserSha=sha;
+  document.getElementById('welcomeScreen').style.display='none';
+  document.getElementById('userApp').style.display='flex';
+  document.getElementById('adminApp').style.display='none';
+  document.getElementById('userSidebarName').innerText=data.name||email;
+  renderUserData();
+}
+function showAdmin(){
+  document.getElementById('welcomeScreen').style.display='none';
+  document.getElementById('userApp').style.display='none';
+  document.getElementById('adminApp').style.display='flex';
+  loadAdminUsers();
+}
+function logout(){ localStorage.removeItem('xnet_user'); location.reload(); }
+
+// ── Render user ──
+function renderUserData(){
+  const d=currentUser;
+  // Pause banner
+  const banner=document.getElementById('userPauseBanner');
+  if(d.requests?.pause?.until){
+    const until=new Date(d.requests.pause.until);
+    if(until>new Date()){
+      const min=Math.ceil((until-new Date())/60000);
+      banner.style.display='block';
+      banner.innerText=`⏳ מושהה עד ${until.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})} (עוד ${min} דקות)`;
+    } else banner.style.display='none';
+  } else banner.style.display='none';
+
+  // Sites list
+  const ul=document.getElementById('userSitesList'); ul.innerHTML='';
+  const domains=d.allowed_domains||[];
+  document.getElementById('uDomainCount').innerText=domains.length;
+  domains.forEach(item=>{
+    const[url,name]=item.split('|');
+    ul.innerHTML+=`<li class="domain-item"><span>${url}${name?` <span style="color:var(--text3);font-size:0.78rem">— ${name}</span>`:''}</span></li>`;
+  });
+  if(!domains.length) ul.innerHTML='<li class="domain-item" style="color:var(--text3)">אין אתרים אישיים</li>';
+
+  document.getElementById('userFlags').innerText=`בסיסי: ${d.base_sites_enabled?'✅':'❌'}  |  גוגל: ${d.google_search_enabled?'✅':'❌'}`;
+
+  if(d.requests?.uninstall_approved){
+    document.getElementById('btnUninstallApproved').disabled=false;
+    document.getElementById('uninstallMsg').className='alert alert-success';
+    document.getElementById('uninstallMsg').innerText='✅ אושרה הסרה. לחץ הורד עדכון למעלה.';
+  }
+}
+
+// ── User actions ──
+async function sendSiteRequest(){
+  const url=fmtDomain(document.getElementById('reqUrl').value); if(!url) return;
+  if(!currentUser.requests) currentUser.requests={};
+  currentUser.requests.site_request={url,reason:document.getElementById('reqReason').value,date:new Date().toISOString()};
+  try{ currentUserSha=await saveProfile(currentUserEmail,currentUser,currentUserSha,"Site request"); document.getElementById('reqDone').style.display='block'; document.getElementById('reqUrl').value=''; }
+  catch(e){ uiAlert('userAlert','שגיאה: '+e.message); }
+}
+function sendSiteEmail(){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת פתיחה: ${fmtDomain(document.getElementById('reqUrl').value)}`); }
+async function requestPause(method){
+  const time=document.getElementById('pauseTime').value, reason=document.getElementById('pauseReason').value;
+  if(method==='email'){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת השהיה ${time} דקות&body=${reason}`); return; }
+  if(!currentUser.requests) currentUser.requests={};
+  currentUser.requests.pause_request={time,reason,date:new Date().toISOString()};
+  try{ currentUserSha=await saveProfile(currentUserEmail,currentUser,currentUserSha,"Pause request"); uiAlert('userAlert','✅ נשלח למנהל','success'); }
+  catch(e){ uiAlert('userAlert','שגיאה'); }
+}
+async function requestUninstall(method){
+  if(method==='email'){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת הסרה`); return; }
+  if(!currentUser.requests) currentUser.requests={};
+  currentUser.requests.uninstall_requested=true;
+  try{ currentUserSha=await saveProfile(currentUserEmail,currentUser,currentUserSha,"Uninstall request"); uiAlert('userAlert','✅ נשלח למנהל','success'); }
+  catch(e){ uiAlert('userAlert','שגיאה'); }
+}
+
+// ── Admin users ──
+async function loadAdminUsers(){
+  document.getElementById('usersLoading').style.display='block';
+  document.getElementById('usersTable').style.display='none';
+  try{
+    const files=(await ghGet("profiles")).filter(f=>f.name.endsWith('.json'));
+    let total=0,active=0,pending=0;
+    const tbody=document.getElementById('usersBody'); tbody.innerHTML='';
+    for(const f of files){
+      const raw=await fetch(f.url,{headers:{Authorization:"token "+GH_TOKEN,"User-Agent":"XNET"}});
+      const d=await raw.json();
+      const data=JSON.parse(b64d(d.content));
+      const email=f.name.replace('_at_','@').replace(/_dot_/g,'.').replace('.json','');
+      total++;
+      const hasPending=data.requests&&(data.requests.pause_request||data.requests.site_request||data.requests.uninstall_requested);
+      if(hasPending) pending++;
+      const isPaused=data.requests?.pause?.until&&new Date(data.requests.pause.until)>new Date();
+      const lastUp=data.last_updated||'—';
+      // Check if active (sync in last 10 min)
+      const isActive=data.last_updated&&(Date.now()-new Date(data.last_updated).getTime())<10*60*1000;
+      if(isActive) active++;
+      tbody.innerHTML+=`<tr>
+        <td><b>${data.name||'—'}</b>${hasPending?' <span style="color:var(--red)">●</span>':''}</td>
+        <td style="color:var(--text3);font-size:0.8rem">${email}</td>
+        <td>${isPaused?`<span class="badge badge-yellow">מושהה</span>`:isActive?`<span class="badge badge-green">פעיל</span>`:`<span class="badge badge-red">לא מחובר</span>`}</td>
+        <td style="font-size:0.8rem;color:var(--text3)">${lastUp}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openEditUser('${email}','${f.sha}')">⚙️</button></td>
+      </tr>`;
+    }
+    document.getElementById('statTotal').innerText=total;
+    document.getElementById('statActive').innerText=active;
+    document.getElementById('statPending').innerText=pending;
+    document.getElementById('usersLoading').style.display='none';
+    document.getElementById('usersTable').style.display=total?'table':'none';
+  }catch(e){ document.getElementById('usersLoading').innerHTML=`<span style="color:var(--red)">שגיאה: ${e.message}</span>`; }
+}
+
+async function openEditUser(email,fileSha){
+  adminEditEmail=email; editModified=false;
+  document.getElementById('editUnsaved').classList.remove('show');
+  document.getElementById('editUserAlerts').innerHTML='<div style="text-align:center;padding:16px"><div class="loader"></div></div>';
+  openModal('editUserModal');
+  try{
+    const{sha,data}=await fetchProfile(email);
+    adminEditSha=sha; adminEditData=data;
+    document.getElementById('editUserTitle').innerText=data.name||email;
+    document.getElementById('editUserMeta').innerText=email;
+
+    // Info grid
+    const reg=data.registered_at?new Date(data.registered_at).toLocaleDateString('he-IL'):'—';
+    const sync=data.last_updated||'—';
+    const pc=data.device_name||'—';
+    const os=data.os_version||'—';
+    document.getElementById('editUserInfo').innerHTML=`
+      <div><span style="color:var(--text3)">הצטרף:</span> ${reg}</div>
+      <div><span style="color:var(--text3)">Sync אחרון:</span> ${sync}</div>
+      <div><span style="color:var(--text3)">מחשב:</span> ${pc}</div>
+      <div><span style="color:var(--text3)">מערכת:</span> ${os}</div>
+      <div><span style="color:var(--text3)">גרסה:</span> ${data.xnet_version||'—'}</div>
+      <div><span style="color:var(--text3)">ID:</span> ${data.email||email}</div>`;
+
+    document.getElementById('editUserAlerts').innerHTML='';
+    // Pending requests
+    if(data.requests?.site_request){
+      const req=data.requests.site_request;
+      document.getElementById('editUserAlerts').innerHTML+=`<div class="alert alert-info" style="display:flex;justify-content:space-between;align-items:center">
+        <span>🌐 בקשה: <b>${req.url}</b>${req.reason?' — '+req.reason:''}</span>
+        <div style="display:flex;gap:6px"><button class="btn btn-success btn-sm" onclick="adminApproveSite('${req.url}')">אשר</button><button class="btn btn-ghost btn-sm" onclick="adminDismissSite()">דחה</button></div>
+      </div>`;
+    }
+    if(data.requests?.pause_request){
+      const req=data.requests.pause_request;
+      document.getElementById('editUserAlerts').innerHTML+=`<div class="alert alert-warn" style="display:flex;justify-content:space-between;align-items:center">
+        <span>⏳ בקשת השהיה: <b>${req.time} דקות</b>${req.reason?' — '+req.reason:''}</span>
+        <button class="btn btn-success btn-sm" onclick="adminApprovePause(${req.time})">אשר</button>
+      </div>`;
+    }
+    if(data.requests?.uninstall_requested&&!data.requests?.uninstall_approved){
+      document.getElementById('editUserAlerts').innerHTML+=`<div class="alert alert-error" style="display:flex;justify-content:space-between;align-items:center">
+        <span>🗑️ בקשת הסרה</span>
+        <button class="btn btn-danger btn-sm" onclick="adminApproveUninstall()">אשר</button>
+      </div>`;
+    }
+    if(data.requests?.pause?.until&&new Date(data.requests.pause.until)>new Date()){
+      const until=new Date(data.requests.pause.until);
+      document.getElementById('editUserAlerts').innerHTML+=`<div class="alert alert-warn" style="display:flex;justify-content:space-between;align-items:center">
+        <span>⏳ מושהה עד ${until.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</span>
+        <button class="btn btn-ghost btn-sm" onclick="adminCancelPause()">בטל</button>
+      </div>`;
+    }
+
+    document.getElementById('eBase').checked=!!data.base_sites_enabled;
+    document.getElementById('eGoogle').checked=!!data.google_search_enabled;
+    renderEditDomains();
+  }catch(e){ document.getElementById('editUserAlerts').innerHTML=`<div class="alert alert-error">שגיאה: ${e.message}</div>`; }
+}
+
+function renderEditDomains(){
+  const ul=document.getElementById('editDomainList'); ul.innerHTML='';
+  (adminEditData.allowed_domains||[]).forEach((item,i)=>{
+    const[url,name]=item.split('|');
+    ul.innerHTML+=`<li class="domain-item"><span>${url}${name?` <span style="color:var(--text3);font-size:0.78rem">(${name})</span>`:''}</span><button class="btn btn-danger btn-sm" onclick="removeEditDomain(${i})">✕</button></li>`;
+  });
+  if(!(adminEditData.allowed_domains||[]).length) ul.innerHTML='<li class="domain-item" style="color:var(--text3)">אין אתרים</li>';
+}
+
+function addEditDomain(){
+  const url=fmtDomain(document.getElementById('eDomainUrl').value), name=document.getElementById('eDomainName').value.trim();
+  if(!url) return;
+  if(!adminEditData.allowed_domains) adminEditData.allowed_domains=[];
+  const entry=name?`${url}|${name}`:url;
+  if(!adminEditData.allowed_domains.some(x=>x.split('|')[0]===url)) adminEditData.allowed_domains.push(entry);
+  document.getElementById('eDomainUrl').value=''; document.getElementById('eDomainName').value='';
+  renderEditDomains(); markUnsaved();
+}
+function removeEditDomain(i){ adminEditData.allowed_domains.splice(i,1); renderEditDomains(); markUnsaved(); }
+
+async function saveEditUser(){
+  adminEditData.base_sites_enabled=document.getElementById('eBase').checked;
+  adminEditData.google_search_enabled=document.getElementById('eGoogle').checked;
+  try{
+    adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Admin update");
+    editModified=false; document.getElementById('editUnsaved').classList.remove('show');
+    uiAlert('adminAlert','✅ נשמר','success');
+  }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
+}
+
+async function adminApproveSite(url){
+  const d=fmtDomain(url);
+  if(!adminEditData.allowed_domains) adminEditData.allowed_domains=[];
+  if(!adminEditData.allowed_domains.some(x=>x.split('|')[0]===d)) adminEditData.allowed_domains.push(d);
+  adminEditData.requests.site_request=null;
+  adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Approve site");
+  openEditUser(adminEditEmail,adminEditSha); loadAdminUsers();
+}
+async function adminDismissSite(){ adminEditData.requests.site_request=null; adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Dismiss site"); openEditUser(adminEditEmail,adminEditSha); loadAdminUsers(); }
+async function adminApprovePause(min){
+  if(!adminEditData.requests) adminEditData.requests={};
+  adminEditData.requests.pause={time:min,date:new Date().toISOString(),until:new Date(Date.now()+min*60000).toISOString()};
+  adminEditData.requests.pause_request=null;
+  adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Approve pause");
+  openEditUser(adminEditEmail,adminEditSha);
+}
+async function adminPause(){
+  const min=parseInt(document.getElementById('ePauseTime').value);
+  if(!adminEditData.requests) adminEditData.requests={};
+  adminEditData.requests.pause={time:min,date:new Date().toISOString(),until:new Date(Date.now()+min*60000).toISOString()};
+  adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Admin pause");
+  openEditUser(adminEditEmail,adminEditSha);
+}
+async function adminCancelPause(){
+  if(adminEditData.requests) adminEditData.requests.pause=null;
+  adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Cancel pause");
+  openEditUser(adminEditEmail,adminEditSha);
+}
+async function adminApproveUninstall(){
+  if(!confirm('לאשר הסרה?')) return;
+  if(!adminEditData.requests) adminEditData.requests={};
+  adminEditData.requests.uninstall_approved=true;
+  adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Approve uninstall");
+  closeModal('editUserModal'); loadAdminUsers();
+}
+async function adminDeleteUser(){
+  if(!confirm(`למחוק לצמיתות את ${adminEditEmail}?`)) return;
+  try{
+    await ghDelete("profiles/"+safeEmail(adminEditEmail)+".json",adminEditSha,"Delete user "+adminEditEmail);
+    closeModal('editUserModal'); loadAdminUsers();
+  }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
+}
+
+// ── Create user ──
+function openCreateUser(){ document.getElementById('cuName').value=''; document.getElementById('cuEmail').value=''; document.getElementById('cuPhone').value=''; document.getElementById('cuBase').checked=true; document.getElementById('cuGoogle').checked=true; document.getElementById('cuAlert').style.display='none'; openModal('createUserModal'); }
+async function createUser(){
+  const name=document.getElementById('cuName').value.trim(), email=document.getElementById('cuEmail').value.trim(), phone=document.getElementById('cuPhone').value.trim();
+  if(!name||!email){ uiAlert('cuAlert','חסר שם או אימייל'); return; }
+  const data={name,phone,email,registered_at:new Date().toISOString(),base_sites_enabled:document.getElementById('cuBase').checked,google_search_enabled:document.getElementById('cuGoogle').checked,allowed_domains:["meny0583285502.github.io"],requests:{pause:null,uninstall_requested:false,uninstall_approved:false,site_request:null}};
+  try{
+    await ghPut("profiles/"+safeEmail(email)+".json",JSON.stringify(data,null,2),null,"Create user "+name);
+    uiAlert('cuAlert','✅ נוצר!','success'); setTimeout(()=>{ closeModal('createUserModal'); loadAdminUsers(); },1200);
+  }catch(e){ uiAlert('cuAlert','שגיאה: '+e.message); }
+}
+
+// ── Base whitelist ──
+async function loadBase(){
+  document.getElementById('baseLoading').style.display='block';
+  document.getElementById('baseDomainList').innerHTML='';
+  try{
+    const d=await ghGet("base_whitelist.json");
+    baseSha=d.sha; baseData=JSON.parse(b64d(d.content));
+    renderBase();
+  }catch{ baseData={allowed_domains:[]}; renderBase(); }
+  document.getElementById('baseLoading').style.display='none';
+}
+function renderBase(){
+  const ul=document.getElementById('baseDomainList'); ul.innerHTML='';
+  (baseData.allowed_domains||[]).forEach((item,i)=>{
+    const[url,name]=item.split('|');
+    ul.innerHTML+=`<li class="domain-item"><span>${url}${name?` <span style="color:var(--text3);font-size:0.78rem">(${name})</span>`:''}</span><button class="btn btn-danger btn-sm" onclick="removeBase(${i})">✕</button></li>`;
+  });
+}
+function addBaseDomain(){
+  const url=fmtDomain(document.getElementById('newBaseUrl').value), name=document.getElementById('newBaseName').value.trim();
+  if(!url||!baseData) return;
+  if(!baseData.allowed_domains) baseData.allowed_domains=[];
+  const entry=name?`${url}|${name}`:url;
+  if(!baseData.allowed_domains.some(x=>x.split('|')[0]===url)){ baseData.allowed_domains.push(entry); }
+  document.getElementById('newBaseUrl').value=''; document.getElementById('newBaseName').value='';
+  renderBase(); baseModified=true; document.getElementById('baseUnsaved').classList.add('show');
+}
+function removeBase(i){ baseData.allowed_domains.splice(i,1); renderBase(); baseModified=true; document.getElementById('baseUnsaved').classList.add('show'); }
+function importBulk(){
+  const lines=document.getElementById('bulkImport').value.split('\n').map(l=>fmtDomain(l)).filter(Boolean);
+  if(!baseData) baseData={allowed_domains:[]};
+  lines.forEach(url=>{ if(!baseData.allowed_domains.some(x=>x.split('|')[0]===url)) baseData.allowed_domains.push(url); });
+  document.getElementById('bulkImport').value='';
+  renderBase(); baseModified=true; document.getElementById('baseUnsaved').classList.add('show');
+}
+async function saveBase(){
+  try{
+    baseData.last_updated=new Date().toISOString().split('T')[0];
+    baseSha=await ghPut("base_whitelist.json",JSON.stringify(baseData,null,2),baseSha,"Update base whitelist");
+    baseModified=false; document.getElementById('baseUnsaved').classList.remove('show');
+    uiAlert('adminAlert','✅ נשמר','success');
+  }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
+}
+
+// ── Password change ──
+function checkPwdStrength(){
+  const p=document.getElementById('newPass').value, bar=document.getElementById('pwdStrength');
+  const score=p.length>10?3:p.length>6?2:p.length>3?1:0;
+  const colors=['#f85149','#d29922','#3fb950','#4f8ef7'];
+  bar.style.background=colors[score]||'var(--border)'; bar.style.width=(score+1)*25+'%';
+}
+async function changePassword(){
+  const cur=document.getElementById('curPass').value, np=document.getElementById('newPass').value, np2=document.getElementById('newPass2').value;
+  if(np!==np2){ uiAlert('pwdAlert','הסיסמאות לא תואמות'); return; }
+  if(np.length<4){ uiAlert('pwdAlert','סיסמה קצרה מדי'); return; }
+  try{
+    let cfgSha=null, cfgData={password:np};
+    try{ const d=await ghGet("admin_config.json"); const c=JSON.parse(b64d(d.content)); if(c.password!==cur){ uiAlert('pwdAlert','סיסמה נוכחית שגויה'); return; } cfgSha=d.sha; }
+    catch{ if(cur!=="5502"){ uiAlert('pwdAlert','סיסמה נוכחית שגויה'); return; } }
+    await ghPut("admin_config.json",JSON.stringify(cfgData,null,2),cfgSha,"Update admin password");
+    uiAlert('pwdAlert','✅ סיסמה שונה!','success');
+    document.getElementById('curPass').value=''; document.getElementById('newPass').value=''; document.getElementById('newPass2').value='';
+    document.getElementById('pwdStrength').style.width='0';
+  }catch(e){ uiAlert('pwdAlert','שגיאה: '+e.message); }
+}
+
+// ── Platform / download ──
+let _dlEmail='';
+function openPlatformModal(email){ _dlEmail=email||currentUserEmail||localStorage.getItem('xnet_user')||''; openModal('platformModal'); }
+function downloadForPlatform(p){ closeModal('platformModal'); if(p==='windows') downloadVBS(_dlEmail); }
+function downloadVBS(email){
+  const ps=[
+    "$url='https://raw.githubusercontent.com/meny0583285502/X-NET/main/install.ps1'",
+    "$out=\"$env:TEMP\\xnet_install.ps1\"",
+    "try{Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing -EA Stop}catch{exit 1}",
+    `& $out -UserEmail '${email}' -Silent`
   ].join("\r\n");
-
-  // Encode as UTF-16LE for -EncodedCommand
-  let utf16 = "";
-  for(let i=0;i<ps.length;i++){ const c=ps.charCodeAt(i); utf16+=String.fromCharCode(c&0xff,(c>>8)&0xff); }
-  const encoded = btoa(utf16);
-
-  // VBScript launcher: runs PowerShell completely hidden, no UAC flash
-  const vbs = [
-    'Set objShell = CreateObject("Shell.Application")',
-    'objShell.ShellExecute "powershell.exe", _',
-    '  "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand ' + encoded + '", _',
-    '  "", "runas", 0',
-    'Set objShell = Nothing'
+  let utf16=""; for(let i=0;i<ps.length;i++){const c=ps.charCodeAt(i);utf16+=String.fromCharCode(c&0xff,(c>>8)&0xff);}
+  const enc=btoa(utf16);
+  const vbs=[
+    'Set s=CreateObject("Shell.Application")',
+    `s.ShellExecute "powershell.exe","-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand ${enc}","","runas",0`,
+    'Set s=Nothing'
   ].join("\r\n");
-
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([vbs],{type:"text/plain"}));
-  a.download="XNET_Update.vbs";
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([vbs],{type:'text/plain'}));
+  a.download='XNET_Update.vbs';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-// ── Registration ──
-async function processRegistration(){
-  const name=document.getElementById("regName").value.trim();
-  const phone=document.getElementById("regPhone").value.trim();
-  const email=document.getElementById("regEmail").value.trim();
-  const pass=document.getElementById("adminPassword").value.trim();
-  if(!email) return uiAlert("regAlert","חסר אימייל");
-  if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase()||email==="5502"){
-    if(pass===ADMIN_PASS){ localStorage.setItem("xnet_user_email",ADMIN_EMAIL); showView("view-admin"); loadAdminData(); }
-    else uiAlert("regAlert","קוד שגוי"); return;
-  }
-  if(!name||!phone) return uiAlert("regAlert","חסר שם או טלפון");
-  document.getElementById("regBtn").disabled=true;
-  const data={name,phone,email,registered_at:new Date().toISOString(),base_sites_enabled:false,google_search_enabled:false,allowed_domains:["meny0583285502.github.io"],requests:{pause:null,uninstall_requested:false,uninstall_approved:false,site_request:null}};
+// ── Init ──
+window.onload=async function(){
+  const saved=localStorage.getItem('xnet_user');
+  const p=new URLSearchParams(location.search);
+  const urlUser=p.get('user');
+  const user=urlUser||saved;
+  if(!user){ showWelcome(); return; }
+  if(urlUser) localStorage.setItem('xnet_user',urlUser);
+  if(user.toLowerCase()===ADMIN_EMAIL.toLowerCase()){ showAdmin(); return; }
   try{
-    const safe=email.replace("@","_at_").replace(/\./g,"_dot_");
-    await ghPut("profiles/"+safe+".json", JSON.stringify(data,null,2), null, "New user "+name);
-    localStorage.setItem("xnet_user_email",email);
-    uiAlert("regAlert","נרשמת! מוריד קובץ...","success");
-    setTimeout(()=>{ downloadInstallerScript(email); loadUserDashboard(email); },1500);
-  }catch(e){ uiAlert("regAlert",e.message); document.getElementById("regBtn").disabled=false; }
-}
-
-// ── User Dashboard ──
-async function loadUserDashboard(email){
-  currentUserEmail=email; showView("view-dashboard");
-  document.getElementById("dashWelcome").innerText="טוען...";
-  try{
-    const u=await fetchUserJson(email); currentUserData=u.content; currentUserFileSha=u.sha;
-    document.getElementById("dashWelcome").innerText="שלום, "+currentUserData.name;
-    document.getElementById("userDisplayEmail").innerText="מזהה: "+email;
-
-    // Check install badge: profile last_updated within 8 minutes = active
-    const lastUp = currentUserData.last_updated;
-    // last_updated is local time from Windows, compare carefully
-    const isActive = lastUp && (Date.now() - new Date(lastUp).getTime()) < 8*60*1000;
-    document.getElementById("installBadge").style.display = isActive ? "inline-flex" : "none";
-    document.getElementById("noInstallBadge").style.display = isActive ? "none" : "inline-flex";
-
-    const banner=document.getElementById("activePauseBanner");
-    const pb=document.getElementById("pauseBadge");
-    banner.style.display="none"; pb.style.display="none";
-    if(currentUserData.requests&&currentUserData.requests.pause&&currentUserData.requests.pause.until){
-      const until=new Date(currentUserData.requests.pause.until);
-      const now=new Date();
-      if(until>now){
-        const diffMin=Math.ceil((until-now)/60000);
-        const timeStr=until.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
-        banner.style.display="block";
-        banner.innerText="⏳ המערכת מושהית עד "+timeStr+" (עוד "+diffMin+" דקות) — לחץ הורד עדכון להפעלה";
-        pb.style.display="inline-flex";
-      }
-    }
-
-    const ul=document.getElementById("userAllowedSitesList"); ul.innerHTML="";
-    (currentUserData.allowed_domains||[]).forEach(item=>{
-      const [d,n]=item.split("|");
-      ul.innerHTML+=`<li><span>${d}${n?` <span style="color:#60a5fa;font-size:0.82rem">— ${n}</span>`:""}</span></li>`;
-    });
-    if(!currentUserData.allowed_domains||currentUserData.allowed_domains.length===0)
-      ul.innerHTML="<li style='color:#475569'>אין אתרים אישיים פתוחים</li>";
-
-    document.getElementById("userStatusFlags").innerText=
-      `אתרים בסיסיים: ${currentUserData.base_sites_enabled?"✅ פעיל":"❌ כבוי"}   |   גוגל: ${currentUserData.google_search_enabled?"✅ פעיל":"❌ כבוי"}`;
-
-    if(currentUserData.requests&&currentUserData.requests.uninstall_approved){
-      document.getElementById("btnUserUninstallApprove").disabled=false;
-      document.getElementById("uninstallInfoMsg").className="alert alert-success";
-      document.getElementById("uninstallInfoMsg").innerText='✅ הסרה אושרה. לחץ על כפתור ההורדה למעלה.';
-    }
-  }catch(e){ uiAlert("userDashAlert","שגיאה בטעינה","error"); }
-}
-async function refreshDashboard(){ await loadUserDashboard(currentUserEmail); }
-
-async function sendSiteRequestSystem(){
-  const url=fmtDomain(document.getElementById("reqUrl").value); if(!url) return;
-  if(!currentUserData.requests) currentUserData.requests={};
-  currentUserData.requests.site_request={url,reason:document.getElementById("reqReason").value,date:new Date().toISOString()};
-  try{ currentUserFileSha=await updateUserJson(currentUserEmail,currentUserData,currentUserFileSha,"Site request"); document.getElementById("reqDone").style.display="block"; document.getElementById("reqUrl").value=""; }catch(e){}
-}
-function sendSiteRequestEmail(){ const u=fmtDomain(document.getElementById("reqUrl").value); window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת פתיחה: ${u}&body=${u}`); }
-
-async function userRequestPause(method){
-  if(!currentUserData) return;
-  const time=document.getElementById("pauseTime").value;
-  const reason=document.getElementById("pauseReason").value;
-  if(method==="email"){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת השהיה ${time} דקות&body=${reason}`); return; }
-  if(!currentUserData.requests) currentUserData.requests={};
-  currentUserData.requests.pause_request={time,reason,date:new Date().toISOString()};
-  currentUserData.requests.pause=null;
-  try{ currentUserFileSha=await updateUserJson(currentUserEmail,currentUserData,currentUserFileSha,"Pause request"); uiAlert("userDashAlert","✅ בקשה נשלחה למנהל","success"); refreshDashboard(); }
-  catch(e){ uiAlert("userDashAlert","שגיאה","error"); }
-}
-
-async function userRequestUninstall(method){
-  if(!currentUserData) return;
-  if(method==="email"){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת הסרה`); return; }
-  if(!currentUserData.requests) currentUserData.requests={};
-  currentUserData.requests.uninstall_requested=true;
-  try{ currentUserFileSha=await updateUserJson(currentUserEmail,currentUserData,currentUserFileSha,"Uninstall request"); uiAlert("userDashAlert","✅ נשלח למנהל","success"); }catch(e){}
-}
-
-// ── Admin ──
-async function loadAdminData(){
-  document.getElementById("adminLoadingActive").style.display="block";
-  document.getElementById("usersTableActive").style.display="none";
-  try{
-    const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/profiles`,{headers:{"Authorization":"token "+GH_TOKEN}});
-    const files=await r.json();
-    const tbA=document.getElementById("adminUsersTableBodyActive");
-    const tbR=document.getElementById("adminUsersTableBodyRemoved");
-    tbA.innerHTML=""; tbR.innerHTML="";
-    let pending=0,active=0,removed=0;
-    for(const f of files){
-      if(!f.name.endsWith(".json")) continue;
-      const email=f.name.replace("_at_","@").replace(/_dot_/g,".").replace(".json","");
-      const ud=await fetch(f.url,{headers:{"Authorization":"token "+GH_TOKEN}});
-      const raw=await ud.json();
-      const d=JSON.parse(b64d(raw.content));
-      if(d.requests&&d.requests.uninstall_approved){
-        tbR.innerHTML+=`<tr><td>${d.name}</td><td>${email}</td><td><span class="badge badge-red">הוסר</span></td><td><button class="btn btn-danger btn-sm" onclick="adminDeleteProfile('${email}','${f.sha}')">🗑️ מחק לצמיתות</button></td></tr>`;
-        removed++;
-      } else {
-        const hasAlert=d.requests&&(d.requests.pause_request||d.requests.site_request||d.requests.uninstall_requested);
-        if(hasAlert) pending++;
-        const pauseActive=d.requests&&d.requests.pause&&d.requests.pause.until&&new Date(d.requests.pause.until)>new Date();
-        tbA.innerHTML+=`<tr>
-          <td><b>${d.name}</b>${hasAlert?' <span style="color:#f87171;font-size:0.85rem">⚠️</span>':""}</td>
-          <td style="color:#60a5fa;font-size:0.83rem">${email}</td>
-          <td>${pauseActive?'<span class="badge badge-yellow">מושהה</span>':'<span class="badge badge-green">פעיל</span>'}</td>
-          <td><button class="btn btn-primary btn-sm" onclick="adminOpenUser('${email}')">⚙️ נהל</button></td>
-        </tr>`;
-        active++;
-      }
-    }
-    document.getElementById("tabActiveUsers").innerHTML=pending>0
-      ?`👥 פעילים <span style="background:#dc2626;color:#fff;border-radius:99px;padding:1px 7px;font-size:0.7rem">${pending}</span>`
-      :`👥 פעילים (${active})`;
-    document.getElementById("tabRemovedUsers").innerHTML=`🗑️ הוסרו (${removed})`;
-    document.getElementById("removedEmpty").style.display=removed>0?"none":"block";
-    document.getElementById("adminLoadingActive").style.display="none";
-    document.getElementById("usersTableActive").style.display=active>0?"table":"none";
-    document.getElementById("usersTableRemoved").style.display=removed>0?"table":"none";
-  }catch(e){ document.getElementById("adminLoadingActive").innerHTML='<span style="color:#f87171">שגיאה בטעינה</span>'; }
-}
-
-async function adminCreateUser(){
-  const name=document.getElementById("newUserName").value.trim();
-  const phone=document.getElementById("newUserPhone").value.trim();
-  const email=document.getElementById("newUserEmail").value.trim();
-  const base=document.getElementById("newUserBase").checked;
-  const google=document.getElementById("newUserGoogle").checked;
-  if(!name||!email) return uiAlert("createUserAlert","חסר שם או אימייל");
-  const data={name,phone,email,registered_at:new Date().toISOString(),base_sites_enabled:base,google_search_enabled:google,allowed_domains:["meny0583285502.github.io"],requests:{pause:null,uninstall_requested:false,uninstall_approved:false,site_request:null}};
-  try{
-    const safe=email.replace("@","_at_").replace(/\./g,"_dot_");
-    await ghPut("profiles/"+safe+".json",JSON.stringify(data,null,2),null,"Admin create user "+name);
-    uiAlert("createUserAlert","✅ משתמש נוצר!","success");
-    document.getElementById("newUserName").value=""; document.getElementById("newUserEmail").value=""; document.getElementById("newUserPhone").value="";
-    document.getElementById("newUserBase").checked=false; document.getElementById("newUserGoogle").checked=false;
-    loadAdminData();
-  }catch(e){ uiAlert("createUserAlert","שגיאה: "+e.message); }
-}
-
-async function adminOpenUser(email){
-  document.getElementById("adminModalOverlay").classList.add("open");
-  const alertsDiv=document.getElementById("adminUserAlerts"); alertsDiv.innerHTML='<div class="loader"></div>';
-  try{
-    const u=await fetchUserJson(email); currentAdminEditingEmail=email; currentUserData=u.content; currentUserFileSha=u.sha;
-    document.getElementById("editUserName").innerText="ניהול: "+currentUserData.name;
-    document.getElementById("adminBaseSitesToggle").checked=!!currentUserData.base_sites_enabled;
-    document.getElementById("adminGoogleSearchToggle").checked=!!currentUserData.google_search_enabled;
-    alertsDiv.innerHTML="";
-    const req=currentUserData.requests||{};
-    if(req.site_request) alertsDiv.innerHTML+=`<div class="alert alert-info" style="display:flex;justify-content:space-between;align-items:center"><span>🌐 בקשה: <b>${req.site_request.url}</b></span><div style="display:flex;gap:6px"><button class="btn btn-success btn-sm" onclick="adminApproveSiteRequest('${req.site_request.url}')">אשר</button><button class="btn btn-ghost btn-sm" onclick="adminDismissSiteRequest()">דחה</button></div></div>`;
-    if(req.pause_request) alertsDiv.innerHTML+=`<div class="alert alert-warn" style="display:flex;justify-content:space-between;align-items:center"><span>⏳ בקשת השהיה: <b>${req.pause_request.time} דק'</b> — ${req.pause_request.reason||"ללא סיבה"}</span><button class="btn btn-success btn-sm" onclick="adminApprovePauseRequest()">אשר</button></div>`;
-    if(req.pause&&req.pause.until&&new Date(req.pause.until)>new Date()) alertsDiv.innerHTML+=`<div class="alert alert-warn">⏳ מושהה עד: ${new Date(req.pause.until).toLocaleString("he-IL")}</div>`;
-    if(req.uninstall_requested&&!req.uninstall_approved) alertsDiv.innerHTML+=`<div class="alert alert-error" style="display:flex;justify-content:space-between;align-items:center"><span>🗑️ בקשת הסרה!</span><button class="btn btn-danger btn-sm" onclick="adminApproveUninstall()">אשר הסרה</button></div>`;
-    renderAdminDomainList();
-  }catch(e){ alertsDiv.innerHTML='<div class="alert alert-error">שגיאה בטעינה</div>'; }
-}
-
-function renderAdminDomainList(){
-  const ul=document.getElementById("editUserDomainList"); ul.innerHTML="";
-  (currentUserData.allowed_domains||[]).forEach((item,i)=>{
-    const [d,n]=item.split("|");
-    ul.innerHTML+=`<li><span>${d}${n?` <span style="color:var(--muted);font-size:0.82rem">(${n})</span>`:""}</span><button class="btn btn-danger btn-sm" onclick="adminRemoveDomain(${i})">✕</button></li>`;
-  });
-  if(!currentUserData.allowed_domains||currentUserData.allowed_domains.length===0)
-    ul.innerHTML="<li style='color:#475569'>אין אתרים אישיים</li>";
-}
-
-async function adminAddDomain(){
-  const d=fmtDomain(document.getElementById("newDomainInput").value);
-  const n=document.getElementById("newDomainName").value.trim();
-  if(!d) return;
-  const entry=n?`${d}|${n}`:d;
-  if(!(currentUserData.allowed_domains||[]).some(x=>x.split("|")[0]===d)) currentUserData.allowed_domains.push(entry);
-  document.getElementById("newDomainInput").value=""; document.getElementById("newDomainName").value="";
-  await saveAdminChanges("Add domain "+d); renderAdminDomainList();
-}
-async function adminRemoveDomain(i){ currentUserData.allowed_domains.splice(i,1); await saveAdminChanges("Remove domain"); renderAdminDomainList(); }
-async function adminApproveSiteRequest(url){ const c=fmtDomain(url); if(!(currentUserData.allowed_domains||[]).some(x=>x.split("|")[0]===c)) currentUserData.allowed_domains.push(c); currentUserData.requests.site_request=null; await saveAdminChanges("Approve site"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
-async function adminDismissSiteRequest(){ currentUserData.requests.site_request=null; await saveAdminChanges("Dismiss"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
-async function adminApprovePauseRequest(){
-  const req=currentUserData.requests.pause_request; if(!req) return;
-  currentUserData.requests.pause={time:req.time,reason:req.reason,date:new Date().toISOString(),until:new Date(Date.now()+parseInt(req.time)*60000).toISOString()};
-  currentUserData.requests.pause_request=null;
-  await saveAdminChanges("Approve pause"); adminOpenUser(currentAdminEditingEmail); loadAdminData();
-}
-async function adminCancelPause(){ currentUserData.requests.pause=null; await saveAdminChanges("Cancel pause"); adminOpenUser(currentAdminEditingEmail); }
-async function adminApproveUninstall(){ if(!confirm("לאשר הסרה?")) return; if(!currentUserData.requests) currentUserData.requests={}; currentUserData.requests.uninstall_approved=true; await saveAdminChanges("Approve uninstall"); closeAdminModal(); loadAdminData(); }
-async function adminTriggerUninstall(){ if(!confirm("לאשר הסרה?")) return; if(!currentUserData.requests) currentUserData.requests={}; currentUserData.requests.uninstall_approved=true; await saveAdminChanges("Trigger uninstall"); closeAdminModal(); loadAdminData(); }
-async function adminTriggerPause(){
-  const m=document.getElementById("adminPauseTime").value; if(!m) return;
-  if(!currentUserData.requests) currentUserData.requests={};
-  currentUserData.requests.pause={time:m,reason:"יזום מנהל",date:new Date().toISOString(),until:new Date(Date.now()+parseInt(m)*60000).toISOString()};
-  await saveAdminChanges("Trigger pause"); adminOpenUser(currentAdminEditingEmail);
-}
-async function adminToggleFeatures(){
-  currentUserData.base_sites_enabled=document.getElementById("adminBaseSitesToggle").checked;
-  currentUserData.google_search_enabled=document.getElementById("adminGoogleSearchToggle").checked;
-  try{ await saveAdminChanges("Toggle features"); }catch(e){ alert("שגיאה"); }
-}
-function adminDownloadForUser(){ openPlatformModal(currentAdminEditingEmail); closeAdminModal(); }
-async function saveAdminChanges(msg){ currentUserFileSha=await updateUserJson(currentAdminEditingEmail,currentUserData,currentUserFileSha,msg); }
-function closeAdminModal(){ document.getElementById("adminModalOverlay").classList.remove("open"); }
-
-// ── Base Whitelist ──
-async function loadAdminBaseSites(){
-  document.getElementById("baseSitesLoading").style.display="block";
-  try{
-    const d=await ghGet("base_whitelist.json");
-    baseWhitelistSha=d.sha; baseWhitelistData=JSON.parse(b64d(d.content));
-    renderBaseDomainList();
-  }catch(e){
-    baseWhitelistData={allowed_domains:[]};
-    renderBaseDomainList();
-  }
-  document.getElementById("baseSitesLoading").style.display="none";
-}
-function renderBaseDomainList(){
-  const ul=document.getElementById("baseDomainList"); ul.innerHTML="";
-  (baseWhitelistData&&baseWhitelistData.allowed_domains||[]).forEach((item,i)=>{
-    const [d,n]=item.split("|");
-    ul.innerHTML+=`<li><span>${d}${n?` <span style="color:var(--muted);font-size:0.82rem">(${n})</span>`:""}</span><button class="btn btn-danger btn-sm" onclick="adminRemoveBaseDomain(${i})">✕</button></li>`;
-  });
-  if(!baseWhitelistData||!baseWhitelistData.allowed_domains||baseWhitelistData.allowed_domains.length===0)
-    ul.innerHTML="<li style='color:#475569'>אין אתרים בסיסיים</li>";
-}
-async function adminAddBaseDomain(){
-  const d=fmtDomain(document.getElementById("newBaseDomainInput").value);
-  const n=document.getElementById("newBaseDomainName").value.trim();
-  if(!d||!baseWhitelistData) return;
-  if(!baseWhitelistData.allowed_domains) baseWhitelistData.allowed_domains=[];
-  const entry=n?`${d}|${n}`:d;
-  if(!baseWhitelistData.allowed_domains.some(x=>x.split("|")[0]===d)) baseWhitelistData.allowed_domains.push(entry);
-  document.getElementById("newBaseDomainInput").value=""; document.getElementById("newBaseDomainName").value="";
-  renderBaseDomainList(); await saveBaseWhitelist("Add base domain "+d);
-}
-async function adminRemoveBaseDomain(i){ baseWhitelistData.allowed_domains.splice(i,1); renderBaseDomainList(); await saveBaseWhitelist("Remove base domain"); }
-async function saveBaseWhitelist(msg){ baseWhitelistSha=await ghPut("base_whitelist.json",JSON.stringify(baseWhitelistData,null,2),baseWhitelistSha,msg); }
-
-// ── Platform Modal ──
-let _pendingDownloadEmail = null;
-function openPlatformModal(email){ _pendingDownloadEmail=email||currentUserEmail; document.getElementById("platformModalOverlay").classList.add("open"); }
-function closePlatformModal(){ document.getElementById("platformModalOverlay").classList.remove("open"); }
-function selectPlatform(p){ closePlatformModal(); if(p==="windows") downloadInstallerScript(_pendingDownloadEmail); }
+    const{sha,data}=await fetchProfile(user);
+    showUser(user,data,sha);
+  }catch{ showWelcome(); }
+};
 </script>
 </body>
 </html>
