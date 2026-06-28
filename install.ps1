@@ -1,5 +1,5 @@
 # X-NET v12.0 - install.ps1
-# משתמש לוחץ אישור אחד → הכל קורה אוטומטית
+# User clicks approve once - everything runs automatically
 param([string]$UserEmail = "", [switch]$Silent)
 
 $VERSION = "12.0"
@@ -17,7 +17,7 @@ else { if (-not $Silent) { Write-Host "ERROR: No email"; Read-Host }; exit }
 if (-not $Silent) { Write-Host "===== X-NET v$VERSION | $UserEmail =====" -ForegroundColor Cyan }
 
 # ==================================================
-# שלב 1 - כתיבת sync.ps1
+# PHASE 1 - Write sync.ps1
 # ==================================================
 $syncLines = [System.Collections.Generic.List[string]]::new()
 $syncLines.Add('# X-NET sync.ps1 v12.0 - runs every minute as SYSTEM')
@@ -222,7 +222,7 @@ $syncLines.Add('@{ installed=$true; paused=$false; base_sites_enabled=$P.base_si
 if (-not $Silent) { Write-Host "[+] sync.ps1 written ($($syncLines.Count) lines)." -ForegroundColor Green }
 
 # ==================================================
-# שלב 2 - tray.ps1
+# PHASE 2 - tray.ps1
 # ==================================================
 $trayLines = [System.Collections.Generic.List[string]]::new()
 $trayLines.Add('$mutex = New-Object System.Threading.Mutex($false, "Global\XNET_TRAY_MUTEX")')
@@ -292,7 +292,7 @@ $sc.TargetPath = "powershell.exe"
 $sc.Arguments  = "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\tray.ps1`""
 $sc.Save()
 
-# הרוג tray ישן, הפעל חדש
+# Kill old tray, start new one
 Get-WmiObject Win32_Process -Filter "name='powershell.exe'" |
     Where-Object { $_.CommandLine -match "tray\.ps1" } |
     ForEach-Object { $_.Terminate() }
@@ -301,27 +301,27 @@ Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Byp
 if (-not $Silent) { Write-Host "[+] Tray started." -ForegroundColor Green }
 
 # ==================================================
-# שלב 3 - Scheduled Task
+# PHASE 3 - Scheduled Task
 # ==================================================
 schtasks /delete /tn "XNET_Sync" /f 2>$null | Out-Null
 schtasks /create /tn "XNET_Sync" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\sync.ps1`"" /sc minute /mo 1 /ru "SYSTEM" /f 2>&1 | Out-Null
 if (-not $Silent) { Write-Host "[+] Scheduled Task: every 1 minute as SYSTEM." -ForegroundColor Green }
 
 # ==================================================
-# שלב 4 - הרץ sync ראשוני
+# PHASE 4 - Run first sync
 # ==================================================
-if (-not $Silent) { Write-Host "[+] מריץ sync ראשוני..." -ForegroundColor Yellow }
+if (-not $Silent) { Write-Host "[+] Running first sync..." -ForegroundColor Yellow }
 & "$DIR\sync.ps1"
 
 if (-not $Silent) {
-    Write-Host "[+] X-NET v$VERSION פעיל!" -ForegroundColor Green
+    Write-Host "[+] X-NET v$VERSION active!" -ForegroundColor Green
     Write-Host ""
-    Write-Host "=== קבצים ב-C:\XNET ===" -ForegroundColor Cyan
+    Write-Host "=== Files in C:\XNET ===" -ForegroundColor Cyan
     Get-ChildItem $DIR -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name) ($($_.Length)b)" }
     Write-Host ""
-    Write-Host "=== לוג אחרון ===" -ForegroundColor Cyan
+    Write-Host "=== Last log ===" -ForegroundColor Cyan
     if (Test-Path "$DIR\sync_log.txt") { Get-Content "$DIR\sync_log.txt" | Select-Object -Last 10 | Write-Host -ForegroundColor Yellow }
-    else { Write-Host "  (אין לוג)" -ForegroundColor Red }
-    Read-Host "לחץ Enter לפתיחת לוח ניהול"
+    else { Write-Host "  (no log)" -ForegroundColor Red }
+    Read-Host "Press Enter to open dashboard"
     Start-Process ("https://meny0583285502.github.io/X-NET/?user=" + $UserEmail + "&installed=1")
 }
