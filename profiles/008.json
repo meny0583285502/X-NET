@@ -11,7 +11,12 @@
     "github.com"
   ],
   "requests": {
-    "pause": null,
+    "pause": {
+      "time": "15",
+      "reason": "יזום מנהל",
+      "date": "2026-06-28T21:56:23.500Z",
+      "until": "2026-06-28T22:11:23.500Z"
+    },
     "uninstall_requested": true,
     "uninstall_approved": false,
     "site_request": null
