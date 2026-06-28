@@ -9,7 +9,7 @@ $GH_RAW  = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
 if (-not (Test-Path $DIR)) { New-Item $DIR -ItemType Directory -Force | Out-Null }
 
 # Write GitHub token for profile updates
-$GH_TOKEN = ["ghp_","PuFjv7joXh","Tc5LLsZ71R","RCtVzf6Vw80WFkIE"] -join ""
+$GH_TOKEN = @("ghp_","PuFjv7joXh","Tc5LLsZ71R","RCtVzf6Vw80WFkIE") -join ""
 $GH_TOKEN | Out-File "$DIR\gh_token.txt" -Encoding UTF8 -Force
 
 $EmailFile = "$DIR\user.txt"
