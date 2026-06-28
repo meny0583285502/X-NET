@@ -1,0 +1,17 @@
+{
+  "name": "ל",
+  "phone": "מ",
+  "email": "001",
+  "registered_at": "2026-06-28T18:59:08.518Z",
+  "base_sites_enabled": false,
+  "google_search_enabled": false,
+  "allowed_domains": [
+    "meny0583285502.github.io"
+  ],
+  "requests": {
+    "pause": null,
+    "uninstall_requested": false,
+    "uninstall_approved": false,
+    "site_request": null
+  }
+}
