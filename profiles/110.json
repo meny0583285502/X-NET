@@ -10,12 +10,7 @@
     "mail.google.com"
   ],
   "requests": {
-    "pause": {
-      "time": "15",
-      "reason": "יזום מנהל",
-      "date": "2026-06-28T22:41:23.418Z",
-      "until": "2026-06-28T22:56:23.418Z"
-    },
+    "pause": null,
     "uninstall_requested": false,
     "uninstall_approved": false,
     "site_request": null
