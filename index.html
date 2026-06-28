@@ -515,25 +515,24 @@ async function loadUserDashboard(email){
     document.getElementById("dashWelcome").innerText="שלום, "+currentUserData.name;
     document.getElementById("userDisplayEmail").innerText="מזהה: "+email;
 
-    // בדוק התקנה לפי last_updated בפרופיל - אם עודכן ב-10 דקות האחרונות = מותקן ופעיל
+    // Check install badge: profile last_updated within 8 minutes = active
     const lastUp = currentUserData.last_updated;
-    const isActive = lastUp && (new Date() - new Date(lastUp)) < 10*60*1000;
-    if(isActive){
-      document.getElementById("installBadge").style.display="inline-flex";
-      document.getElementById("noInstallBadge").style.display="none";
-    } else {
-      document.getElementById("noInstallBadge").style.display="inline-flex";
-      document.getElementById("installBadge").style.display="none";
-    }
+    // last_updated is local time from Windows, compare carefully
+    const isActive = lastUp && (Date.now() - new Date(lastUp).getTime()) < 8*60*1000;
+    document.getElementById("installBadge").style.display = isActive ? "inline-flex" : "none";
+    document.getElementById("noInstallBadge").style.display = isActive ? "none" : "inline-flex";
 
     const banner=document.getElementById("activePauseBanner");
     const pb=document.getElementById("pauseBadge");
     banner.style.display="none"; pb.style.display="none";
     if(currentUserData.requests&&currentUserData.requests.pause&&currentUserData.requests.pause.until){
       const until=new Date(currentUserData.requests.pause.until);
-      if(until>new Date()){
+      const now=new Date();
+      if(until>now){
+        const diffMin=Math.ceil((until-now)/60000);
+        const timeStr=until.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
         banner.style.display="block";
-        banner.innerText="⏳ המערכת מושהית עד "+until.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
+        banner.innerText="⏳ המערכת מושהית עד "+timeStr+" (עוד "+diffMin+" דקות) — לחץ הורד עדכון להפעלה";
         pb.style.display="inline-flex";
       }
     }
