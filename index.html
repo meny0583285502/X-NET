@@ -1,586 +1,645 @@
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X-NET Portal</title>
-    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3203/3203853.png" type="image/png">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #e2e8f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .container { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 35px; width: 100%; max-width: 680px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-height: 95vh; overflow-y: auto; }
-        .view { display: none; } .view.active { display: block; }
-        .header { text-align: center; margin-bottom: 25px; }
-        .icon { font-size: 45px; margin-bottom: 10px; }
-        .title { font-size: 1.6rem; font-weight: 800; color: #60a5fa; }
-        .subtitle { color: #94a3b8; font-size: 0.85rem; margin-top: 5px; }
-        .field { margin-bottom: 16px; }
-        .field label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 6px; font-weight: 600; }
-        .field input, .field textarea, .field select { width: 100%; background: #0f172a; border: 1.5px solid #334155; color: #e2e8f0; border-radius: 8px; padding: 11px 14px; font-size: 0.95rem; outline: none; transition: all 0.2s; }
-        .field input:focus, .field textarea:focus { border-color: #60a5fa; }
-        .btn { border: none; border-radius: 9px; padding: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
-        .btn-block { width: 100%; }
-        .btn-primary { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; }
-        .btn-danger { background: #dc2626; color: white; }
-        .btn-secondary { background: #334155; color: #cbd5e1; }
-        .btn-success { background: #16a34a; color: white; }
-        .btn-warn { background: #d97706; color: white; }
-        .btn:hover { opacity: 0.9; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 99px; font-size: 0.8rem; font-weight: bold; margin-bottom: 15px; }
-        .status-active { background: #14532d; color: #86efac; }
-        .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 10px; flex-wrap: wrap; }
-        .tab { cursor: pointer; padding: 6px 12px; font-size: 0.85rem; color: #94a3b8; border-radius: 6px; }
-        .tab.active { background: #1e3a5f; color: #60a5fa; font-weight: bold; }
-        .panel { display: none; background: #0f172a; padding: 15px; border-radius: 10px; border: 1px solid #334155; }
-        .panel.active { display: block; }
-        ul.domain-list { list-style: none; padding: 0; }
-        ul.domain-list li { background: #1e293b; padding: 8px 12px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
-        .alert { padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 12px; }
-        .alert-info { background: #1e3a5f; color: #93c5fd; border: 1px solid #3b82f6; }
-        .alert-success { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
-        .alert-error { background: #450a0a; color: #fca5a5; border: 1px solid #b91c1c; }
-        .alert-warn { background: #451a03; color: #fcd34d; border: 1px solid #f59e0b; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; }
-        th, td { text-align: right; padding: 10px; border-bottom: 1px solid #334155; }
-        th { color: #94a3b8; }
-        .action-btns { display: flex; gap: 5px; }
-        .btn-sm { padding: 4px 8px; font-size: 0.75rem; }
-        .loader { border: 3px solid #334155; border-top: 3px solid #60a5fa; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #adminUserModal { display: none; background: #0f172a; border: 1px solid #60a5fa; border-radius: 10px; padding: 20px; margin-top: 20px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X-NET | מערכת סינון גלישה</title>
+<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3203/3203853.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif}
+body{background:#f0f4f8;color:#1e293b;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px}
+.card{background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,0.10);padding:32px;width:100%;max-width:700px;margin:auto}
+.view{display:none}.view.active{display:block}
+/* Header */
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;flex-shrink:0}
+.logo-text h1{font-size:1.4rem;font-weight:800;color:#1e293b}
+.logo-text p{font-size:0.8rem;color:#64748b;margin-top:1px}
+/* Form */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:0.82rem;color:#475569;margin-bottom:5px;font-weight:600}
+.field input,.field select,.field textarea{width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 13px;font-size:0.95rem;color:#1e293b;background:#f8fafc;outline:none;transition:.2s}
+.field input:focus,.field select:focus{border-color:#2563eb;background:#fff}
+/* Buttons */
+.btn{border:none;border-radius:8px;padding:10px 16px;font-size:0.92rem;font-weight:700;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+.btn-block{width:100%;justify-content:center}
+.btn-primary{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff}
+.btn-success{background:#16a34a;color:#fff}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-warn{background:#d97706;color:#fff}
+.btn-ghost{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}
+.btn-sm{padding:5px 10px;font-size:0.78rem}
+.btn:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+/* Alerts */
+.alert{padding:10px 14px;border-radius:8px;font-size:0.85rem;margin-bottom:12px;border-left:4px solid}
+.alert-info{background:#eff6ff;color:#1d4ed8;border-color:#3b82f6}
+.alert-success{background:#f0fdf4;color:#15803d;border-color:#22c55e}
+.alert-error{background:#fef2f2;color:#b91c1c;border-color:#ef4444}
+.alert-warn{background:#fffbeb;color:#92400e;border-color:#f59e0b}
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:0.75rem;font-weight:700}
+.badge-green{background:#dcfce7;color:#15803d}
+.badge-blue{background:#dbeafe;color:#1d4ed8}
+.badge-red{background:#fee2e2;color:#b91c1c}
+.badge-yellow{background:#fef9c3;color:#854d0e}
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:#f1f5f9;border-radius:10px;padding:4px;flex-wrap:wrap}
+.tab{cursor:pointer;padding:7px 14px;font-size:0.83rem;color:#64748b;border-radius:7px;font-weight:600;transition:.15s;white-space:nowrap}
+.tab.active{background:#fff;color:#2563eb;box-shadow:0 1px 4px rgba(0,0,0,.10)}
+.panel{display:none}.panel.active{display:block}
+/* Lists */
+.domain-list{list-style:none;padding:0;margin-top:8px}
+.domain-list li{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;margin-bottom:6px;font-size:0.88rem}
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:0.87rem}
+th,td{text-align:right;padding:10px 12px;border-bottom:1px solid #f1f5f9}
+th{color:#64748b;font-weight:600;background:#f8fafc}
+tr:hover td{background:#f8fafc}
+/* User card in admin */
+.user-row-badge{padding:2px 8px;border-radius:99px;font-size:0.72rem;font-weight:700}
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+/* Separator */
+.sep{border:none;border-top:1px solid #f1f5f9;margin:16px 0}
+/* Platform picker */
+.platform-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.platform-card{border:2px solid #e2e8f0;border-radius:12px;padding:20px 16px;cursor:pointer;text-align:center;transition:.15s}
+.platform-card:hover{border-color:#2563eb;background:#eff6ff}
+.platform-card.selected{border-color:#2563eb;background:#eff6ff}
+.platform-card .pc{font-size:2.2rem;margin-bottom:6px}
+.platform-card h3{font-size:0.95rem;font-weight:700;color:#1e293b}
+.platform-card p{font-size:0.78rem;color:#64748b;margin-top:2px}
+/* Loader */
+.loader{border:3px solid #e2e8f0;border-top:3px solid #2563eb;border-radius:50%;width:20px;height:20px;animation:spin 1s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Toggle */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.toggle-row label{font-size:0.9rem;color:#334155;font-weight:600}
+.toggle-row p{font-size:0.78rem;color:#64748b;margin-top:2px}
+input[type=checkbox]{width:18px;height:18px;accent-color:#2563eb;cursor:pointer}
+/* Section title */
+.section-title{font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;margin-top:16px}
+/* Top bar */
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px}
+.topbar-left{display:flex;flex-direction:column;gap:2px}
+.topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+</style>
 </head>
 <body>
+<div class="card">
 
-<div class="container">
+<!-- ===== REGISTER ===== -->
+<div id="view-register" class="view active">
+  <div class="logo">
+    <div class="logo-icon">🛡️</div>
+    <div class="logo-text"><h1>X-NET Blocker</h1><p>מערכת סינון וניהול גלישה אישית</p></div>
+  </div>
+  <div id="regAlert" class="alert" style="display:none"></div>
+  <div class="field"><label>שם מלא</label><input id="regName" placeholder="ישראל ישראלי"></div>
+  <div class="field"><label>מספר טלפון</label><input id="regPhone" placeholder="050-1234567"></div>
+  <div class="field"><label>כתובת אימייל (המזהה שלך)</label><input id="regEmail" placeholder="israel@gmail.com" autocomplete="email"></div>
+  <div id="adminPasswordFrame" class="field" style="display:none">
+    <label>🛡️ קוד מנהל מערכת</label>
+    <input type="password" id="adminPassword" placeholder="קוד גישה">
+  </div>
+  <button id="regBtn" class="btn btn-primary btn-block" onclick="processRegistration()">⚡ הרשמה והורדת סקריפט התקנה</button>
+  <div style="margin-top:16px;text-align:center;font-size:0.82rem;color:#64748b">כבר רשום? <a href="#" onclick="tryAutoLogin()" style="color:#2563eb;text-decoration:none;font-weight:600">עבור לאזור האישי</a></div>
+</div>
 
-    <div id="view-register" class="view active">
-        <div class="header">
-            <div class="icon">🛡️</div>
-            <div class="title">X-NET Blocker</div>
-            <div class="subtitle">מערכת סינון וניהול גלישה אישית</div>
-        </div>
-        
-        <div id="regAlert" class="alert" style="display:none;"></div>
-        <div class="field"><label>שם מלא</label><input type="text" id="regName" placeholder="ישראל ישראלי"></div>
-        <div class="field"><label>מספר טלפון</label><input type="text" id="regPhone" placeholder="050-1234567"></div>
-        <div class="field"><label>כתובת אימייל (המזהה שלך)</label><input type="text" id="regEmail" placeholder="israel@gmail.com"></div>
-        <div class="field" id="adminPasswordFrame" style="display: none;">
-            <label style="color: #f59e0b;">🛡️ קוד אימות מנהל מערכת</label>
-            <input type="password" id="adminPassword" placeholder="הכנס קוד גישה">
-        </div>
-        <button id="regBtn" class="btn btn-primary btn-block" onclick="processRegistration()">⚡ הרשמה והורדת סקריפט התקנה</button>
+<!-- ===== DASHBOARD ===== -->
+<div id="view-dashboard" class="view">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2 id="dashWelcome" style="font-size:1.25rem;font-weight:800;color:#1e293b">שלום...</h2>
+      <span id="userDisplayEmail" style="font-size:0.8rem;color:#64748b"></span>
+    </div>
+    <div class="topbar-right">
+      <span id="installBadge" class="badge badge-blue" style="display:none">✅ מותקן</span>
+      <span id="noInstallBadge" class="badge badge-red" style="display:none">⚠️ לא מותקן</span>
+      <span id="pauseBadge" class="badge badge-yellow" style="display:none">⏳ מושהה</span>
+      <span class="badge badge-green">🛡️ מוגן</span>
+      <button class="btn btn-ghost btn-sm" onclick="refreshDashboard()">🔄 רענן</button>
+      <button class="btn btn-ghost btn-sm" onclick="logoutSession()">יציאה</button>
+    </div>
+  </div>
+
+  <div id="activePauseBanner" class="alert alert-warn" style="display:none;margin-bottom:12px"></div>
+  <div id="userDashAlert" class="alert" style="display:none;margin-bottom:12px"></div>
+
+  <button class="btn btn-success btn-block" onclick="downloadInstallerScript(currentUserEmail)" style="margin-bottom:20px;font-size:1rem;padding:13px">
+    📥 הורד והפעל עדכונים (החלת שינויים / הסרה / השהיה)
+  </button>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('tab-sites',this)">🌐 מורשים</div>
+    <div class="tab" onclick="switchTab('tab-request',this)">📩 בקשת פתיחה</div>
+    <div class="tab" onclick="switchTab('tab-pause',this)">⏳ השהיה</div>
+    <div class="tab" onclick="switchTab('tab-uninstall',this)">🗑️ הסרה</div>
+  </div>
+
+  <div id="tab-sites" class="panel active">
+    <div class="section-title">אתרים פתוחים אישית</div>
+    <ul id="userAllowedSitesList" class="domain-list"><li>טוען... <div class="loader"></div></li></ul>
+    <div id="userStatusFlags" style="margin-top:10px;font-size:0.82rem;color:#64748b;background:#f8fafc;padding:10px;border-radius:8px;border:1px solid #e2e8f0"></div>
+  </div>
+
+  <div id="tab-request" class="panel">
+    <div class="section-title">בקשת פתיחת אתר</div>
+    <div class="field"><label>כתובת האתר</label><input id="reqUrl" placeholder="example.com"></div>
+    <div class="field"><label>סיבה (אופציונלי)</label><input id="reqReason" placeholder="לצורך עבודה..."></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="sendSiteRequestSystem()">📋 שלח דרך המערכת</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="sendSiteRequestEmail()">📧 שלח באימייל</button>
+    </div>
+    <div id="reqDone" class="alert alert-success" style="display:none;margin-top:10px">✅ נשלח! לאחר אישור המנהל לחץ על הכפתור הירוק.</div>
+  </div>
+
+  <div id="tab-pause" class="panel">
+    <div class="alert alert-warn">⚠️ השהיה מחייבת אישור מנהל. לאחר שתשלח בקשה, המנהל יאשר אותה.</div>
+    <div class="field"><label>זמן מבוקש</label>
+      <select id="pauseTime"><option value="15">15 דקות</option><option value="30">30 דקות</option><option value="60">שעה אחת</option></select>
+    </div>
+    <div class="field"><label>סיבה</label><input id="pauseReason" placeholder="לצורך..."></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-warn" style="flex:1" onclick="userRequestPause('system')">📋 שלח בקשה למנהל</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="userRequestPause('email')">📧 שלח באימייל</button>
+    </div>
+  </div>
+
+  <div id="tab-uninstall" class="panel">
+    <div id="uninstallInfoMsg" class="alert alert-info">הסרה מחייבת אישור מנהל.</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-warn" style="flex:1" onclick="userRequestUninstall('system')">📋 בקש הסרה</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="userRequestUninstall('email')">📧 באימייל</button>
+    </div>
+    <hr class="sep">
+    <button id="btnUserUninstallApprove" class="btn btn-danger btn-block" onclick="downloadInstallerScript(currentUserEmail)" disabled>
+      הסר תוכנה מהמחשב (לאחר אישור מנהל)
+    </button>
+  </div>
+</div>
+
+<!-- ===== ADMIN ===== -->
+<div id="view-admin" class="view">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2 style="font-size:1.25rem;font-weight:800;color:#1e293b">👑 פאנל ניהול</h2>
+      <span style="font-size:0.8rem;color:#64748b">מנהל: meny85502@gmail.com</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="logoutSession()">🔒 יציאה</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchAdminTab('admin-users-active',this)" id="tabActiveUsers">👥 פעילים</div>
+    <div class="tab" onclick="switchAdminTab('admin-users-removed',this)" id="tabRemovedUsers">🗑️ הוסרו</div>
+    <div class="tab" onclick="switchAdminTab('admin-base-sites',this)">🌍 בסיס</div>
+    <div class="tab" onclick="switchAdminTab('admin-create-user',this)">➕ הוסף משתמש</div>
+  </div>
+
+  <div id="admin-users-active" class="panel active">
+    <div id="adminLoadingActive" style="text-align:center;padding:24px;color:#64748b"><div class="loader"></div> טוען...</div>
+    <table id="usersTableActive" style="display:none">
+      <thead><tr><th>שם</th><th>אימייל</th><th>סטטוס</th><th>פעולה</th></tr></thead>
+      <tbody id="adminUsersTableBodyActive"></tbody>
+    </table>
+  </div>
+
+  <div id="admin-users-removed" class="panel">
+    <table id="usersTableRemoved" style="display:none">
+      <thead><tr><th>שם</th><th>אימייל</th><th>סטטוס</th></tr></thead>
+      <tbody id="adminUsersTableBodyRemoved"></tbody>
+    </table>
+  </div>
+
+  <div id="admin-base-sites" class="panel">
+    <div class="section-title">רשימת אתרים בסיסית (Base)</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="newBaseDomainInput" placeholder="example.com" style="flex:2;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-size:0.9rem">
+      <input id="newBaseDomainName" placeholder="שם האתר" style="flex:3;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-size:0.9rem">
+      <button class="btn btn-primary" onclick="adminAddBaseDomain()">הוסף</button>
+    </div>
+    <div id="baseSitesLoading" style="display:none;text-align:center;padding:12px"><div class="loader"></div></div>
+    <ul id="baseDomainList" class="domain-list" style="max-height:280px;overflow-y:auto"></ul>
+  </div>
+
+  <div id="admin-create-user" class="panel">
+    <div class="section-title">יצירת משתמש ידנית</div>
+    <div class="alert alert-info">צור פרופיל משתמש ישירות בלי שהמשתמש יירשם</div>
+    <div class="field"><label>שם מלא</label><input id="newUserName" placeholder="ישראל ישראלי"></div>
+    <div class="field"><label>טלפון</label><input id="newUserPhone" placeholder="050-1234567"></div>
+    <div class="field"><label>אימייל</label><input id="newUserEmail" placeholder="user@gmail.com"></div>
+    <div class="toggle-row">
+      <div><label>גישה לאתרים בסיסיים</label></div>
+      <input type="checkbox" id="newUserBase">
+    </div>
+    <div class="toggle-row">
+      <div><label>חיפוש גוגל</label></div>
+      <input type="checkbox" id="newUserGoogle">
+    </div>
+    <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="adminCreateUser()">➕ צור משתמש</button>
+    <div id="createUserAlert" class="alert" style="display:none;margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ===== MODAL: edit user ===== -->
+<div class="modal-overlay" id="adminModalOverlay" onclick="if(event.target===this)closeAdminModal()">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 id="editUserName" style="font-size:1.05rem;font-weight:800;color:#1e293b">ניהול משתמש</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeAdminModal()">✕ סגור</button>
     </div>
 
-    <div id="view-dashboard" class="view">
-        <div class="header" style="text-align: right;">
-            <div style="display:flex; justify-content: space-between; align-items: center;">
-                <h2 id="dashWelcome" style="font-size: 1.3rem; color: #60a5fa;">שלום, משתמש</h2>
-                <div style="display:flex; gap: 10px; align-items:center;">
-                    <button class="btn btn-secondary btn-sm" onclick="logoutSession()">התנתק</button>
-                    <span class="status-badge status-active">🛡️ מוגן ומסונן</span>
-                    <span id="installBadge" style="display:none;background:#1e3a5f;color:#93c5fd;border:1px solid #3b82f6;border-radius:99px;padding:3px 12px;font-size:0.75rem;font-weight:700"></span>
-                    <span id="noInstallBadge" style="display:none;background:#450a0a;color:#fca5a5;border:1px solid #ef4444;border-radius:99px;padding:3px 12px;font-size:0.75rem;font-weight:700">⚠️ לא מותקן</span>
-                </div>
-            </div>
-            <p class="subtitle" id="userDisplayEmail" style="text-align: right;"></p>
-        </div>
-        
-        <button class="btn btn-success btn-block" onclick="downloadInstallerScript(currentUserEmail)" style="margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-            📥 הורד והפעל עדכונים (החלת שינויים / הסרה / השהיה)
-        </button>
+    <div id="adminUserAlerts" style="margin-bottom:12px"></div>
 
-        <div id="activePauseBanner" class="alert alert-warn" style="display:none; margin-bottom: 15px; font-size: 0.95rem; text-align: center; font-weight: bold;"></div>
-
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div id="userDashAlert" class="alert" style="display:none;flex:1;margin-bottom:0;margin-left:8px"></div>
-            <button class="btn btn-secondary btn-sm" onclick="refreshDashboard()" style="white-space:nowrap">🔄 ריענון נתונים</button>
-        </div>
-
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('tab-sites', this)">🌐 מורשים</div>
-            <div class="tab" onclick="switchTab('tab-request', this)">📩 בקשת פתיחה</div>
-            <div class="tab" onclick="switchTab('tab-pause', this)">⏳ השהיה</div>
-            <div class="tab" onclick="switchTab('tab-uninstall', this)">🗑️ הסרה</div>
-        </div>
-
-        <div id="tab-sites" class="panel active">
-            <h3 style="font-size:0.95rem; margin-bottom:10px; color:#93c5fd;">אתרים פתוחים אישית (בנוסף לבסיס):</h3>
-            <ul id="userAllowedSitesList" class="domain-list"><li>טוען נתונים מהשרת... <div class="loader"></div></li></ul>
-            <div id="userStatusFlags" style="margin-top: 10px; font-size: 0.85rem; color: #94a3b8; background: #1e293b; padding: 10px; border-radius: 6px;"></div>
-        </div>
-
-        <div id="tab-request" class="panel">
-            <div class="field"><label>כתובת האתר לפתיחה</label><input type="text" id="reqUrl" placeholder="example.com"></div>
-            <div class="field"><label>סיבה</label><input type="text" id="reqReason"></div>
-            <div style="display:flex;gap:8px">
-                <button class="btn btn-primary" style="flex:1" onclick="sendSiteRequestSystem()">📋 דרך המערכת</button>
-                <button class="btn btn-secondary" style="flex:1" onclick="sendSiteRequestEmail()">📧 דרך אימייל</button>
-            </div>
-            <div id="reqDone" class="alert alert-success" style="display:none;margin-top:8px">נשלח בהצלחה! לאחר האישור יש ללחוץ על הכפתור הירוק לעדכון.</div>
-        </div>
-
-        <div id="tab-pause" class="panel">
-            <div class="alert alert-warn">⚠️ השהיה מחייבת אישור מנהל. שלח בקשה, והמנהל יפעיל אותה מהפאנל שלו.</div>
-            <div class="field"><label>זמן מבוקש</label>
-                <select id="pauseTime"><option value="15">15 דקות</option><option value="30">30 דקות</option><option value="60">שעה אחת</option></select>
-            </div>
-            <div class="field"><label>סיבה</label><input type="text" id="pauseReason"></div>
-            <div style="display:flex;gap:8px">
-                <button class="btn btn-primary" style="flex:1" onclick="userRequestPause('system')">📋 שלח בקשה למנהל</button>
-                <button class="btn btn-secondary" style="flex:1" onclick="userRequestPause('email')">📧 דרך אימייל</button>
-            </div>
-        </div>
-
-        <div id="tab-uninstall" class="panel">
-            <div id="uninstallInfoMsg" class="alert alert-info">הסרה מחייבת אישור מנהל.</div>
-            <div style="display:flex;gap:8px;margin-bottom:12px">
-                <button class="btn btn-warn" style="flex:1" onclick="userRequestUninstall('system')">📋 בקש הסרה במערכת</button>
-                <button class="btn btn-secondary" style="flex:1" onclick="userRequestUninstall('email')">📧 בקש באימייל</button>
-            </div>
-            <div style="border-top:1px solid #334155;padding-top:12px">
-                <button id="btnUserUninstallApprove" class="btn btn-danger btn-block" onclick="downloadInstallerScript(currentUserEmail)" disabled>
-                    הסר תוכנה מהמחשב כעת (לאחר אישור)
-                </button>
-            </div>
-        </div>
+    <!-- הרשאות -->
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px">
+      <div class="section-title" style="margin-top:0">⚙️ הרשאות</div>
+      <div class="toggle-row">
+        <div><label>אתרים בסיסיים (Base)</label><p>גישה לרשימת האתרים הכללית</p></div>
+        <input type="checkbox" id="adminBaseSitesToggle" onchange="adminToggleFeatures()">
+      </div>
+      <div class="toggle-row" style="border-bottom:none">
+        <div><label>חיפוש גוגל</label><p>מאפשר גישה ל-google.com</p></div>
+        <input type="checkbox" id="adminGoogleSearchToggle" onchange="adminToggleFeatures()">
+      </div>
     </div>
 
-    <div id="view-admin" class="view">
-        <div class="header" style="text-align: right;">
-            <div style="display:flex; justify-content: space-between; align-items: center;">
-                <h2 style="font-size: 1.4rem; color: #f59e0b;">👑 פאנל ניהול ראשי</h2>
-                <button class="btn btn-secondary btn-sm" onclick="logoutSession()">🔒 התנתק</button>
-            </div>
-            <p class="subtitle" style="text-align: right;">מנהל מחובר: meny85502@gmail.com</p>
-        </div>
-
-        <div id="adminTabs" class="tabs">
-            <div class="tab active" onclick="switchAdminTab('admin-users-active', this)" id="tabActiveUsers">👥 פעילים</div>
-            <div class="tab" onclick="switchAdminTab('admin-users-removed', this)" id="tabRemovedUsers">🗑️ הוסרו</div>
-            <div class="tab" onclick="switchAdminTab('admin-base-sites', this)">🌍 רשימת בסיס</div>
-        </div>
-
-        <div id="admin-users-active" class="panel active" style="padding: 0; border: none; background: transparent;">
-            <div id="adminLoadingActive" style="text-align:center; padding:20px; color:#94a3b8;"><div class="loader"></div> טוען נתונים...</div>
-            <table id="usersTableActive" style="display:none;">
-                <thead><tr><th>שם משתמש</th><th>אימייל / מזהה</th><th>פעולות</th></tr></thead>
-                <tbody id="adminUsersTableBodyActive"></tbody>
-            </table>
-        </div>
-
-        <div id="admin-users-removed" class="panel" style="padding: 0; border: none; background: transparent;">
-            <table id="usersTableRemoved" style="display:none; opacity: 0.7;">
-                <thead><tr><th>שם משתמש</th><th>אימייל / מזהה</th><th>סטטוס</th></tr></thead>
-                <tbody id="adminUsersTableBodyRemoved"></tbody>
-            </table>
-        </div>
-
-        <div id="admin-base-sites" class="panel" style="padding: 15px; border-radius: 10px; background: #0f172a;">
-            <h3 style="color:#60a5fa; margin-bottom: 15px;">ניהול רשימת אתרים בסיסית (Base)</h3>
-            
-            <div class="field">
-                <label>הוסף דומיין לרשימת הבסיס</label>
-                <div style="display:flex; gap:8px;">
-                    <input type="text" id="newBaseDomainInput" placeholder="example.com" style="flex:2;">
-                    <input type="text" id="newBaseDomainName" placeholder="שם האתר (למשל: בנק לאומי)" style="flex:3;">
-                    <button class="btn btn-primary" onclick="adminAddBaseDomain()">הוסף</button>
-                </div>
-            </div>
-            
-            <div id="baseSitesLoading" style="text-align:center; display:none;"><div class="loader"></div></div>
-            <ul id="baseDomainList" class="domain-list" style="max-height: 300px; overflow-y: auto;"></ul>
-        </div>
-
-        <div id="adminUserModal">
-            <div style="display:flex; justify-content: space-between; margin-bottom: 15px;">
-                <h3 style="color:#60a5fa;" id="editUserName">עריכת משתמש</h3>
-                <button class="btn btn-secondary btn-sm" onclick="closeAdminModal()">X סגור</button>
-            </div>
-            
-            <div id="adminUserAlerts" style="margin-bottom: 15px;"></div>
-
-            <div class="field" style="border: 1px solid #3b82f6; padding: 15px; border-radius: 8px; background: #1e3a5f;">
-                <h4 style="color:#93c5fd; margin-bottom:10px; font-size: 0.95rem;">⚙️ הרשאות בסיס</h4>
-                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.95rem; color: #e2e8f0; margin-bottom: 12px;">
-                    <input type="checkbox" id="adminBaseSitesToggle" onchange="adminToggleFeatures()" style="transform: scale(1.3);">
-                    אפשר גישה לאתרים בסיסיים (מתוך קובץ Base)
-                </label>
-                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.95rem; color: #e2e8f0;">
-                    <input type="checkbox" id="adminGoogleSearchToggle" onchange="adminToggleFeatures()" style="transform: scale(1.3);">
-                    אפשר חיפוש גוגל (Google Search)
-                </label>
-            </div>
-
-            <div class="field" style="margin-top: 15px;">
-                <label>הוסף אתר מורשה אישי (Domain)</label>
-                <div style="display:flex; gap:8px;">
-                    <input type="text" id="newDomainInput" placeholder="example.com" style="flex:2;">
-                    <input type="text" id="newDomainName" placeholder="שם האתר (אופציונלי)" style="flex:3;">
-                    <button class="btn btn-primary" onclick="adminAddDomain()">הוסף</button>
-                </div>
-            </div>
-
-            <ul id="editUserDomainList" class="domain-list"></ul>
-            
-            <div style="border-top: 1px solid #334155; padding-top: 15px; margin-top: 15px;">
-                <h4 style="color:#f59e0b; margin-bottom:10px; font-size: 0.95rem;">⚡ פעולות מנהל יזומות</h4>
-                <div style="display:flex; gap:10px; margin-bottom:10px;">
-                    <input type="number" id="adminInitiatedPause" placeholder="דקות השהיה" style="width:100px; padding: 6px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white;">
-                    <button class="btn btn-warn btn-sm" style="flex:1;" onclick="adminTriggerPause()">הפעל השהיה</button>
-                </div>
-                <button class="btn btn-danger btn-sm" style="width:100%;" onclick="adminTriggerUninstall()">אישור הסרה יזום (ללא בקשת משתמש)</button>
-            </div>
-        </div>
+    <!-- אתרים אישיים -->
+    <div class="section-title">🌐 אתרים אישיים מורשים</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="newDomainInput" placeholder="example.com" style="flex:2;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:0.88rem">
+      <input id="newDomainName" placeholder="שם (אופציונלי)" style="flex:3;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:0.88rem">
+      <button class="btn btn-primary btn-sm" onclick="adminAddDomain()">הוסף</button>
     </div>
+    <ul id="editUserDomainList" class="domain-list" style="max-height:180px;overflow-y:auto"></ul>
 
+    <hr class="sep">
+
+    <!-- פעולות מנהל -->
+    <div class="section-title">⚡ פעולות מנהל</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+      <input type="number" id="adminInitiatedPause" placeholder="דקות" style="width:90px;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:0.9rem">
+      <button class="btn btn-warn" style="flex:1" onclick="adminTriggerPause()">⏳ הפעל השהיה</button>
+      <button class="btn btn-ghost btn-sm" onclick="adminDownloadForUser()">📥 הורד BAT</button>
+    </div>
+    <button class="btn btn-danger btn-block" onclick="adminTriggerUninstall()">🗑️ אשר הסרה יזומה</button>
+  </div>
 </div>
 
 <script>
-    const ADMIN_EMAIL = "meny85502@gmail.com";
-    const ADMIN_PASS = "5502";
-    const GITHUB_OWNER = "meny0583285502";
-    const GITHUB_REPO = "X-NET";
-    const GITHUB_TOKEN = ["ghp_", "PuFjv7joXh", "Tc5LLsZ71R", "RCtVzf6Vw80WFkIE"].join(""); 
+const ADMIN_EMAIL = "meny85502@gmail.com";
+const ADMIN_PASS  = "5502";
+const GH_OWNER   = "meny0583285502";
+const GH_REPO    = "X-NET";
+const GH_TOKEN   = ["ghp_","PuFjv7joXh","Tc5LLsZ71R","RCtVzf6Vw80WFkIE"].join("");
 
-    let currentUserEmail = "";
-    let currentUserData = null;
-    let currentUserFileSha = "";
+let currentUserEmail = "";
+let currentUserData  = null;
+let currentUserFileSha = "";
+let currentAdminEditingEmail = "";
+let baseWhitelistData = null;
+let baseWhitelistSha  = "";
 
-    function utf8_to_b64(str) { return window.btoa(unescape(encodeURIComponent(str))); }
-    function b64_to_utf8(str) { return decodeURIComponent(escape(window.atob(str))); }
-    function formatDomain(input) { if (!input) return ""; return input.replace(/^[\/]*https?:\/\//i, "").replace(/^www\./i, "").replace(/^\//, "").split('/')[0].split('?')[0].trim(); }
+const b64e = str => btoa(unescape(encodeURIComponent(str)));
+const b64d = str => decodeURIComponent(escape(atob(str)));
+function fmtDomain(s){ return (s||"").replace(/^[\/]*https?:\/\//i,"").replace(/^www\./i,"").replace(/^\//,"").split("/")[0].split("?")[0].trim().toLowerCase(); }
 
-    window.onload = function() {
-        document.getElementById('regEmail').addEventListener('input', function(e) {
-            const val = e.target.value.trim().toLowerCase();
-            document.getElementById('adminPasswordFrame').style.display = (val === ADMIN_EMAIL.toLowerCase() || val === "5502") ? "block" : "none";
-        });
+// ── Init ──────────────────────────────────────────────────────
+window.onload = function(){
+  document.getElementById("regEmail").addEventListener("input", e=>{
+    const v = e.target.value.trim().toLowerCase();
+    document.getElementById("adminPasswordFrame").style.display =
+      (v === ADMIN_EMAIL.toLowerCase() || v === "5502") ? "block" : "none";
+  });
+  const p = new URLSearchParams(location.search);
+  const u = p.get("user");
+  if(p.get("installed")==="1" && u){
+    localStorage.setItem("xnet_install_status", JSON.stringify({installed:true,ts:new Date().toISOString()}));
+    history.replaceState({},"", location.pathname + "?user=" + encodeURIComponent(u));
+  }
+  if(u){ localStorage.setItem("xnet_user_email",u); loadUserDashboard(u); return; }
+  const saved = localStorage.getItem("xnet_user_email");
+  if(saved){
+    if(saved.toLowerCase()===ADMIN_EMAIL.toLowerCase()||saved==="5502"){ showView("view-admin"); loadAdminData(); }
+    else loadUserDashboard(saved);
+  } else showView("view-register");
+};
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const userParam = urlParams.get('user');
-        if (urlParams.get('installed') === '1' && userParam) {
-            localStorage.setItem('xnet_install_status', JSON.stringify({ installed: true, last_updated: new Date().toLocaleString('he-IL') }));
-            history.replaceState({}, '', window.location.pathname + '?user=' + encodeURIComponent(userParam));
-        }
+function tryAutoLogin(){
+  const saved = localStorage.getItem("xnet_user_email");
+  if(saved){ loadUserDashboard(saved); return; }
+  const email = prompt("הכנס את האימייל שלך:");
+  if(email){ localStorage.setItem("xnet_user_email",email.trim()); loadUserDashboard(email.trim()); }
+}
 
-        if (userParam) {
-            localStorage.setItem('xnet_user_email', userParam);
-            loadUserDashboard(userParam);
-        } else {
-            const saved = localStorage.getItem('xnet_user_email');
-            if(saved) {
-                if(saved.toLowerCase() === ADMIN_EMAIL.toLowerCase() || saved === "5502"){
-                    showView('view-admin'); loadAdminData();
-                } else { loadUserDashboard(saved); }
-            } else { showView('view-register'); }
-        }
-    };
+function logoutSession(){ localStorage.removeItem("xnet_user_email"); location.reload(); }
+function showView(id){ document.querySelectorAll(".view").forEach(v=>v.classList.remove("active")); document.getElementById(id).classList.add("active"); }
+function switchTab(id,el){
+  document.querySelectorAll("#view-dashboard .tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll("#view-dashboard .panel").forEach(p=>p.classList.remove("active"));
+  el.classList.add("active"); document.getElementById(id).classList.add("active");
+}
+function switchAdminTab(id,el){
+  document.querySelectorAll("#view-admin .tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll("#view-admin .panel").forEach(p=>p.classList.remove("active"));
+  el.classList.add("active"); document.getElementById(id).classList.add("active");
+  if(id==="admin-base-sites") loadAdminBaseSites();
+}
+function uiAlert(id,msg,type="error"){
+  const el=document.getElementById(id); el.style.display="block";
+  el.className="alert alert-"+type; el.innerText=msg;
+  setTimeout(()=>el.style.display="none",6000);
+}
 
-    function logoutSession() { localStorage.removeItem('xnet_user_email'); location.reload(); }
-    function showView(id) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-    function switchTab(id, el) { 
-        document.querySelectorAll('#view-dashboard .tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('#view-dashboard .panel').forEach(p => p.classList.remove('active'));
-        el.classList.add('active'); document.getElementById(id).classList.add('active');
-    }
-    function switchAdminTab(id, el) { 
-        document.querySelectorAll('#view-admin .tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('#view-admin .panel').forEach(p => p.classList.remove('active'));
-        el.classList.add('active'); document.getElementById(id).classList.add('active');
-        if(id === 'admin-base-sites') loadAdminBaseSites();
-    }
-    function uiAlert(id, msg, type = 'error') {
-        const el = document.getElementById(id); el.style.display = 'block'; el.className = `alert alert-${type}`; el.innerText = msg;
-        setTimeout(() => { el.style.display = 'none'; }, 6000);
-    }
+// ── GitHub API ─────────────────────────────────────────────────
+async function ghGet(path){
+  const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{headers:{"Authorization":"token "+GH_TOKEN}});
+  if(!r.ok) throw new Error("לא נמצא: "+path);
+  return r.json();
+}
+async function ghPut(path,content,sha,msg){
+  const body={message:msg,content:b64e(content)};
+  if(sha) body.sha=sha;
+  const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{method:"PUT",headers:{"Authorization":"token "+GH_TOKEN,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d=await r.json(); return d.content.sha;
+}
+async function fetchUserJson(email){
+  const safe=email.replace("@","_at_").replace(/\./g,"_dot_");
+  const d=await ghGet("profiles/"+safe+".json");
+  return{sha:d.sha,content:JSON.parse(b64d(d.content))};
+}
+async function updateUserJson(email,data,sha,msg){
+  const safe=email.replace("@","_at_").replace(/\./g,"_dot_");
+  return ghPut("profiles/"+safe+".json", JSON.stringify(data,null,2), sha, msg);
+}
 
-    async function fetchUserJson(email) {
-        const safe = email.replace('@', '_at_').replace(/\./g, '_dot_');
-        const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/profiles/${safe}.json`, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
-        if (!res.ok) throw new Error("פרופיל לא נמצא");
-        const data = await res.json(); return { sha: data.sha, content: JSON.parse(b64_to_utf8(data.content)) };
-    }
-    async function updateUserJson(email, newData, sha, msg) {
-        const safe = email.replace('@', '_at_').replace(/\./g, '_dot_');
-        const content = utf8_to_b64(JSON.stringify(newData, null, 2));
-        const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/profiles/${safe}.json`, { method: 'PUT', headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, content: content, sha: sha }) });
-        const resData = await res.json(); return resData.content.sha;
-    }
+// ── BAT Download ───────────────────────────────────────────────
+function downloadInstallerScript(email){
+  const url = "https://meny0583285502.github.io/X-NET/install.ps1";
+  // BAT: downloads install.ps1 then runs it as Admin
+  const lines = [
+    "@echo off",
+    "echo X-NET - Downloading...",
+    "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Invoke-WebRequest -Uri '" + url + "' -OutFile '%TEMP%\\xnet_i.ps1' -UseBasicParsing\"",
+    "if not exist \"%TEMP%\\xnet_i.ps1\" ( echo ERROR: Download failed! & pause & exit /b 1 )",
+    "echo Running as Administrator...",
+    "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \\'%TEMP%\\xnet_i.ps1\\' -UserEmail \\'"+email+"\\'' -Verb RunAs -Wait\"",
+    "exit"
+  ];
+  const bat = lines.join("\r\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([bat],{type:"text/plain"}));
+  a.download="XNET_Update.bat";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
 
-    async function processRegistration() {
-        const name = document.getElementById('regName').value.trim(); const phone = document.getElementById('regPhone').value.trim();
-        let email = document.getElementById('regEmail').value.trim(); const pass = document.getElementById('adminPassword').value.trim();
-        if (!email) return uiAlert('regAlert', "חסר אימייל");
-        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || email === "5502") {
-            if (pass === ADMIN_PASS) { localStorage.setItem('xnet_user_email', ADMIN_EMAIL); showView('view-admin'); loadAdminData(); } 
-            else uiAlert('regAlert', "קוד שגוי"); return;
-        }
-        if (!name || !phone) return uiAlert('regAlert', "חסר שם/טלפון");
-        document.getElementById('regBtn').disabled = true;
-        
-        const userData = { name: name, phone: phone, email: email, registered_at: new Date().toISOString(), base_sites_enabled: false, google_search_enabled: false, allowed_domains: ["meny0583285502.github.io"], requests: { pause: null, uninstall_requested: false, uninstall_approved: false, site_request: null } };
-        try {
-            const safe = email.replace('@', '_at_').replace(/\./g, '_dot_');
-            await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/profiles/${safe}.json`, { method: 'PUT', headers: { 'Authorization': `token ${GITHUB_TOKEN}` }, body: JSON.stringify({ message: `New user`, content: utf8_to_b64(JSON.stringify(userData, null, 2)) }) });
-            localStorage.setItem('xnet_user_email', email); uiAlert('regAlert', "מוריד התקנה...", "success");
-            setTimeout(() => { downloadInstallerScript(email); loadUserDashboard(email); }, 1500);
-        } catch (e) { uiAlert('regAlert', e.message); document.getElementById('regBtn').disabled = false; }
-    }
+// ── Registration ───────────────────────────────────────────────
+async function processRegistration(){
+  const name=document.getElementById("regName").value.trim();
+  const phone=document.getElementById("regPhone").value.trim();
+  const email=document.getElementById("regEmail").value.trim();
+  const pass=document.getElementById("adminPassword").value.trim();
+  if(!email) return uiAlert("regAlert","חסר אימייל");
+  if(email.toLowerCase()===ADMIN_EMAIL.toLowerCase()||email==="5502"){
+    if(pass===ADMIN_PASS){ localStorage.setItem("xnet_user_email",ADMIN_EMAIL); showView("view-admin"); loadAdminData(); }
+    else uiAlert("regAlert","קוד שגוי"); return;
+  }
+  if(!name||!phone) return uiAlert("regAlert","חסר שם או טלפון");
+  document.getElementById("regBtn").disabled=true;
+  const data={name,phone,email,registered_at:new Date().toISOString(),base_sites_enabled:false,google_search_enabled:false,allowed_domains:["meny0583285502.github.io"],requests:{pause:null,uninstall_requested:false,uninstall_approved:false,site_request:null}};
+  try{
+    const safe=email.replace("@","_at_").replace(/\./g,"_dot_");
+    await ghPut("profiles/"+safe+".json", JSON.stringify(data,null,2), null, "New user "+name);
+    localStorage.setItem("xnet_user_email",email);
+    uiAlert("regAlert","נרשמת! מוריד קובץ התקנה...","success");
+    setTimeout(()=>{ downloadInstallerScript(email); loadUserDashboard(email); },1500);
+  }catch(e){ uiAlert("regAlert",e.message); document.getElementById("regBtn").disabled=false; }
+}
 
-    function downloadInstallerScript(email) {
-        const lines = [
-            '@echo off',
-            'echo X-NET - Downloading installer...',
-            "powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'https://meny0583285502.github.io/X-NET/install.ps1' -OutFile '%TEMP%\\xnet_install.ps1' -UseBasicParsing"",
-            'if not exist "%TEMP%\\xnet_install.ps1" ( echo ERROR: Download failed! & pause & exit /b 1 )',
-            'echo Launching as Administrator...',
-            `powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File ""%TEMP%\\xnet_install.ps1"" -UserEmail ""${email}""' -Verb RunAs -Wait"`,
-            'exit'
-        ];
-        const bat = lines.join('\r\n');
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([bat], { type: 'text/plain' }));
-        a.download = 'XNET_Update.bat';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    }
+// ── User Dashboard ─────────────────────────────────────────────
+async function loadUserDashboard(email){
+  currentUserEmail=email; showView("view-dashboard");
+  document.getElementById("dashWelcome").innerText="טוען...";
+  try{
+    const u=await fetchUserJson(email); currentUserData=u.content; currentUserFileSha=u.sha;
+    document.getElementById("dashWelcome").innerText="שלום, "+currentUserData.name;
+    document.getElementById("userDisplayEmail").innerText="מזהה: "+email;
 
-    async function loadUserDashboard(email) {
-        currentUserEmail = email; showView('view-dashboard'); document.getElementById('dashWelcome').innerText = `טוען...`;
-        try {
-            const user = await fetchUserJson(email); currentUserData = user.content; currentUserFileSha = user.sha;
-            document.getElementById('dashWelcome').innerText = `שלום, ${currentUserData.name}`;
-            document.getElementById('userDisplayEmail').innerText = `מזהה מערכת: ${email}`;
-            
-            const raw = localStorage.getItem('xnet_install_status');
-            if (raw && JSON.parse(raw).installed) { document.getElementById('installBadge').style.display = 'inline-block'; document.getElementById('installBadge').innerText = `✅ מותקן`; } 
-            else { document.getElementById('noInstallBadge').style.display = 'inline-block'; }
+    const inst=localStorage.getItem("xnet_install_status");
+    if(inst&&JSON.parse(inst).installed){ document.getElementById("installBadge").style.display="inline-flex"; document.getElementById("noInstallBadge").style.display="none"; }
+    else{ document.getElementById("noInstallBadge").style.display="inline-flex"; document.getElementById("installBadge").style.display="none"; }
 
-            const banner = document.getElementById('activePauseBanner');
-            banner.style.display = 'none';
-            if (currentUserData.requests && currentUserData.requests.pause && currentUserData.requests.pause.until) {
-                const untilDate = new Date(currentUserData.requests.pause.until);
-                if (untilDate > new Date()) {
-                    banner.style.display = 'block';
-                    banner.innerText = `⏳ המערכת מושהית זמנית עד השעה: ${untilDate.toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}`;
-                }
-            }
-
-            const ul = document.getElementById('userAllowedSitesList'); ul.innerHTML = '';
-            currentUserData.allowed_domains.forEach(item => {
-                const parts = item.split('|');
-                const d = parts[0];
-                const n = parts.length > 1 ? ` - <span style="color:#60a5fa; font-weight:bold;">${parts[1]}</span>` : "";
-                ul.innerHTML += `<li>${d}${n}</li>`;
-            });
-            document.getElementById('userStatusFlags').innerText = `הגדרות חשבון: גישה לאתרים בסיסיים - ${currentUserData.base_sites_enabled ? 'פעיל 🟢' : 'כבוי 🔴'} | חיפוש גוגל - ${currentUserData.google_search_enabled ? 'פעיל 🟢' : 'כבוי 🔴'}`;
-
-            if (currentUserData.requests && currentUserData.requests.uninstall_approved) {
-                document.getElementById('btnUserUninstallApprove').disabled = false;
-                document.getElementById('uninstallInfoMsg').className = "alert alert-success";
-                document.getElementById('uninstallInfoMsg').innerText = "✅ הסרת התוכנה אושרה ע\"י המנהל. לחץ על הכפתור הירוק למעלה כדי להסיר לחלוטין.";
-            }
-        } catch (e) { uiAlert('userDashAlert', "שגיאה בטעינה", "error"); }
-    }
-
-    async function refreshDashboard() { await loadUserDashboard(currentUserEmail); }
-
-    async function sendSiteRequestSystem() {
-        const url = formatDomain(document.getElementById('reqUrl').value); if (!url) return;
-        if(!currentUserData.requests) currentUserData.requests = {};
-        currentUserData.requests.site_request = { url: url, reason: document.getElementById('reqReason').value, date: new Date().toISOString() };
-        try { currentUserFileSha = await updateUserJson(currentUserEmail, currentUserData, currentUserFileSha, "Request"); document.getElementById('reqDone').style.display='block'; document.getElementById('reqUrl').value=''; } catch(e){}
-    }
-    function sendSiteRequestEmail() { const u=formatDomain(document.getElementById('reqUrl').value); if(!u) return; window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשה&body=${u}`); }
-
-    async function userRequestPause(method) {
-        if(!currentUserData) return;
-        const time = document.getElementById('pauseTime').value;
-        const reason = document.getElementById('pauseReason').value;
-        if (method === 'email') {
-            window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת השהיה ${time} דקות&body=סיבה: ${reason}`);
-        } else {
-            // שולח בקשה למנהל בלבד — ללא until (המנהל קובע)
-            if(!currentUserData.requests) currentUserData.requests = {};
-            currentUserData.requests.pause_request = { time: time, reason: reason, date: new Date().toISOString() };
-            // מוחק השהיה קודמת אם הייתה
-            currentUserData.requests.pause = null;
-            try { 
-                currentUserFileSha = await updateUserJson(currentUserEmail, currentUserData, currentUserFileSha, "Pause request");
-                uiAlert('userDashAlert', "✅ בקשת ההשהיה נשלחה למנהל. המערכת תושהה לאחר אישורו.", "success"); 
-                refreshDashboard();
-            } catch(e){ uiAlert('userDashAlert', "שגיאה בשליחה", "error"); }
-        }
+    const banner=document.getElementById("activePauseBanner");
+    const pb=document.getElementById("pauseBadge");
+    banner.style.display="none"; pb.style.display="none";
+    if(currentUserData.requests&&currentUserData.requests.pause&&currentUserData.requests.pause.until){
+      const until=new Date(currentUserData.requests.pause.until);
+      if(until>new Date()){
+        banner.style.display="block";
+        banner.innerText="⏳ המערכת מושהית עד "+until.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
+        pb.style.display="inline-flex";
+      }
     }
 
-    async function userRequestUninstall(method) {
-        if(!currentUserData) return;
-        if (method === 'email') window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=הסרה`);
-        else {
-            if(!currentUserData.requests) currentUserData.requests = {}; currentUserData.requests.uninstall_requested = true;
-            try { currentUserFileSha = await updateUserJson(currentUserEmail, currentUserData, currentUserFileSha, "Uninst"); uiAlert('userDashAlert', "נשלח למנהל", "success"); } catch(e){}
-        }
-    }
+    const ul=document.getElementById("userAllowedSitesList"); ul.innerHTML="";
+    (currentUserData.allowed_domains||[]).forEach(item=>{
+      const [d,n]=item.split("|");
+      ul.innerHTML+=`<li><span>${d}${n?` <span style="color:#2563eb;font-weight:600">— ${n}</span>`:""}</span></li>`;
+    });
+    if(!currentUserData.allowed_domains||currentUserData.allowed_domains.length===0)
+      ul.innerHTML="<li style='color:#64748b'>אין אתרים אישיים פתוחים</li>";
 
-    // ================= ניהול =================
-    let currentAdminEditingEmail = "";
-    let baseWhitelistData = null;
-    let baseWhitelistSha = "";
+    document.getElementById("userStatusFlags").innerText=
+      `אתרים בסיסיים: ${currentUserData.base_sites_enabled?"✅ פעיל":"❌ כבוי"}   |   גוגל: ${currentUserData.google_search_enabled?"✅ פעיל":"❌ כבוי"}`;
 
-    async function loadAdminBaseSites() {
-        document.getElementById('baseSitesLoading').style.display = 'block';
-        try {
-            const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/base_whitelist.json`, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
-            const data = await res.json();
-            baseWhitelistSha = data.sha;
-            baseWhitelistData = JSON.parse(b64_to_utf8(data.content));
-            renderBaseDomainList();
-        } catch(e) { alert("שגיאה בטעינת קובץ הבסיס"); }
-        document.getElementById('baseSitesLoading').style.display = 'none';
+    if(currentUserData.requests&&currentUserData.requests.uninstall_approved){
+      document.getElementById("btnUserUninstallApprove").disabled=false;
+      document.getElementById("uninstallInfoMsg").className="alert alert-success";
+      document.getElementById("uninstallInfoMsg").innerText='✅ הסרה אושרה. לחץ על "הורד והפעל עדכונים" למעלה.';
     }
+  }catch(e){ uiAlert("userDashAlert","שגיאה בטעינה","error"); }
+}
+async function refreshDashboard(){ await loadUserDashboard(currentUserEmail); }
 
-    function renderBaseDomainList() {
-        const ul = document.getElementById('baseDomainList'); ul.innerHTML = '';
-        if(baseWhitelistData && baseWhitelistData.allowed_domains) {
-            baseWhitelistData.allowed_domains.forEach((item, index) => { 
-                const parts = item.split('|');
-                const d = parts[0];
-                const n = parts.length > 1 ? ` <span style="color:#94a3b8; font-size:0.85rem;">(${parts[1]})</span>` : "";
-                ul.innerHTML += `<li><span>${d}${n}</span> <button class="btn btn-danger btn-sm" onclick="adminRemoveBaseDomain(${index})">X</button></li>`; 
-            });
-        }
-    }
+async function sendSiteRequestSystem(){
+  const url=fmtDomain(document.getElementById("reqUrl").value); if(!url) return;
+  if(!currentUserData.requests) currentUserData.requests={};
+  currentUserData.requests.site_request={url,reason:document.getElementById("reqReason").value,date:new Date().toISOString()};
+  try{ currentUserFileSha=await updateUserJson(currentUserEmail,currentUserData,currentUserFileSha,"Site request"); document.getElementById("reqDone").style.display="block"; document.getElementById("reqUrl").value=""; }catch(e){}
+}
+function sendSiteRequestEmail(){ const u=fmtDomain(document.getElementById("reqUrl").value); window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת פתיחה: ${u}&body=${u}`); }
 
-    async function adminAddBaseDomain() {
-        const d = formatDomain(document.getElementById('newBaseDomainInput').value); 
-        const n = document.getElementById('newBaseDomainName').value.trim();
-        if(!d || !baseWhitelistData) return;
-        
-        const entry = n ? `${d}|${n}` : d;
-        const exists = baseWhitelistData.allowed_domains.some(x => x.split('|')[0] === d);
-        
-        if (!exists) baseWhitelistData.allowed_domains.push(entry);
-        document.getElementById('newBaseDomainInput').value = ''; 
-        document.getElementById('newBaseDomainName').value = ''; 
-        renderBaseDomainList(); 
-        await saveBaseWhitelist("Added base domain");
-    }
-    
-    async function adminRemoveBaseDomain(idx) {
-        baseWhitelistData.allowed_domains.splice(idx, 1); renderBaseDomainList(); await saveBaseWhitelist("Removed base domain");
-    }
+async function userRequestPause(method){
+  if(!currentUserData) return;
+  const time=document.getElementById("pauseTime").value;
+  const reason=document.getElementById("pauseReason").value;
+  if(method==="email"){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת השהיה ${time} דקות&body=${reason}`); return; }
+  if(!currentUserData.requests) currentUserData.requests={};
+  currentUserData.requests.pause_request={time,reason,date:new Date().toISOString()};
+  currentUserData.requests.pause=null;
+  try{ currentUserFileSha=await updateUserJson(currentUserEmail,currentUserData,currentUserFileSha,"Pause request"); uiAlert("userDashAlert","✅ בקשה נשלחה למנהל","success"); refreshDashboard(); }
+  catch(e){ uiAlert("userDashAlert","שגיאה","error"); }
+}
 
-    async function saveBaseWhitelist(msg) {
-        const content = utf8_to_b64(JSON.stringify(baseWhitelistData, null, 2));
-        const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/base_whitelist.json`, { method: 'PUT', headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, content: content, sha: baseWhitelistSha }) });
-        const resData = await res.json(); baseWhitelistSha = resData.content.sha;
-    }
+async function userRequestUninstall(method){
+  if(!currentUserData) return;
+  if(method==="email"){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת הסרה`); return; }
+  if(!currentUserData.requests) currentUserData.requests={};
+  currentUserData.requests.uninstall_requested=true;
+  try{ currentUserFileSha=await updateUserJson(currentUserEmail,currentUserData,currentUserFileSha,"Uninstall request"); uiAlert("userDashAlert","✅ נשלח למנהל","success"); }catch(e){}
+}
 
-    async function loadAdminData() {
-        try {
-            const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/profiles`, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
-            const files = await res.json();
-            const tbodyActive = document.getElementById('adminUsersTableBodyActive'); const tbodyRemoved = document.getElementById('adminUsersTableBodyRemoved');
-            tbodyActive.innerHTML = ''; tbodyRemoved.innerHTML = '';
-            let pendingReqs = 0; let activeCount = 0; let removedCount = 0;
-            
-            for (const file of files) {
-                if(file.name.endsWith('.json')) {
-                    const email = file.name.replace('_at_', '@').replace(/_dot_/g, '.').replace('.json', '');
-                    const uRes = await fetch(file.url, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
-                    const uDataRaw = await uRes.json(); const uData = JSON.parse(b64_to_utf8(uDataRaw.content));
-                    
-                    if (uData.requests && uData.requests.uninstall_approved) {
-                        tbodyRemoved.innerHTML += `<tr><td>${uData.name}</td><td>${email}</td><td><span class="status-badge" style="background:#450a0a;color:#fca5a5;">הוסר</span></td></tr>`;
-                        removedCount++;
-                    } else {
-                        let alertIcon = (uData.requests && (uData.requests.pause || uData.requests.site_request || uData.requests.uninstall_requested)) ? " ⚠️" : "";
-                        if(alertIcon) pendingReqs++;
-                        tbodyActive.innerHTML += `<tr><td>${uData.name} ${alertIcon}</td><td style="color:#60a5fa;">${email}</td><td class="action-btns"><button class="btn btn-primary btn-sm" onclick="adminOpenUser('${email}')">⚙️ ניהול</button></td></tr>`;
-                        activeCount++;
-                    }
-                }
-            }
-            document.getElementById('tabActiveUsers').innerHTML = pendingReqs > 0 ? `👥 פעילים <span style="background:red; color:white; border-radius:50%; padding:2px 6px;">${pendingReqs}</span>` : `👥 פעילים (${activeCount})`;
-            document.getElementById('tabRemovedUsers').innerHTML = `🗑️ הוסרו (${removedCount})`;
-            document.getElementById('adminLoadingActive').style.display = 'none'; document.getElementById('usersTableActive').style.display = 'table'; document.getElementById('usersTableRemoved').style.display = 'table';
-        } catch (e) { document.getElementById('adminLoadingActive').innerHTML = `<span style="color:#fca5a5;">שגיאה בטעינה</span>`; }
+// ── Admin ──────────────────────────────────────────────────────
+async function loadAdminData(){
+  document.getElementById("adminLoadingActive").style.display="block";
+  document.getElementById("usersTableActive").style.display="none";
+  try{
+    const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/profiles`,{headers:{"Authorization":"token "+GH_TOKEN}});
+    const files=await r.json();
+    const tbA=document.getElementById("adminUsersTableBodyActive");
+    const tbR=document.getElementById("adminUsersTableBodyRemoved");
+    tbA.innerHTML=""; tbR.innerHTML="";
+    let pending=0,active=0,removed=0;
+    for(const f of files){
+      if(!f.name.endsWith(".json")) continue;
+      const email=f.name.replace("_at_","@").replace(/_dot_/g,".").replace(".json","");
+      const ud=await fetch(f.url,{headers:{"Authorization":"token "+GH_TOKEN}});
+      const raw=await ud.json();
+      const d=JSON.parse(b64d(raw.content));
+      if(d.requests&&d.requests.uninstall_approved){
+        tbR.innerHTML+=`<tr><td>${d.name}</td><td>${email}</td><td><span class="badge badge-red">הוסר</span></td></tr>`;
+        removed++;
+      } else {
+        const hasAlert=d.requests&&(d.requests.pause_request||d.requests.site_request||d.requests.uninstall_requested);
+        if(hasAlert) pending++;
+        const pauseActive=d.requests&&d.requests.pause&&d.requests.pause.until&&new Date(d.requests.pause.until)>new Date();
+        tbA.innerHTML+=`<tr>
+          <td><b>${d.name}</b>${hasAlert?' <span style="color:#dc2626">⚠️</span>':""}</td>
+          <td style="color:#2563eb;font-size:0.85rem">${email}</td>
+          <td>${pauseActive?'<span class="badge badge-yellow">מושהה</span>':'<span class="badge badge-green">פעיל</span>'}</td>
+          <td><button class="btn btn-primary btn-sm" onclick="adminOpenUser('${email}')">⚙️ נהל</button></td>
+        </tr>`;
+        active++;
+      }
     }
+    document.getElementById("tabActiveUsers").innerHTML=pending>0?`👥 פעילים <span style="background:#dc2626;color:#fff;border-radius:99px;padding:1px 7px;font-size:0.72rem">${pending}</span>`:`👥 פעילים (${active})`;
+    document.getElementById("tabRemovedUsers").innerHTML=`🗑️ הוסרו (${removed})`;
+    document.getElementById("adminLoadingActive").style.display="none";
+    document.getElementById("usersTableActive").style.display="table";
+    document.getElementById("usersTableRemoved").style.display="table";
+  }catch(e){ document.getElementById("adminLoadingActive").innerHTML='<span style="color:#dc2626">שגיאה בטעינה</span>'; }
+}
 
-    async function adminOpenUser(email) {
-        document.getElementById('adminUserModal').style.display = 'block'; const alertsDiv = document.getElementById('adminUserAlerts'); alertsDiv.innerHTML = '<div class="loader"></div>';
-        try {
-            const user = await fetchUserJson(email); currentAdminEditingEmail = email; currentUserData = user.content; currentUserFileSha = user.sha;
-            document.getElementById('editUserName').innerText = `ניהול: ${currentUserData.name}`; alertsDiv.innerHTML = '';
-            
-            document.getElementById('adminBaseSitesToggle').checked = (currentUserData.base_sites_enabled === true);
-            document.getElementById('adminGoogleSearchToggle').checked = (currentUserData.google_search_enabled === true);
+async function adminCreateUser(){
+  const name=document.getElementById("newUserName").value.trim();
+  const phone=document.getElementById("newUserPhone").value.trim();
+  const email=document.getElementById("newUserEmail").value.trim();
+  const base=document.getElementById("newUserBase").checked;
+  const google=document.getElementById("newUserGoogle").checked;
+  if(!name||!email) return uiAlert("createUserAlert","חסר שם או אימייל");
+  const data={name,phone,email,registered_at:new Date().toISOString(),base_sites_enabled:base,google_search_enabled:google,allowed_domains:["meny0583285502.github.io"],requests:{pause:null,uninstall_requested:false,uninstall_approved:false,site_request:null}};
+  try{
+    const safe=email.replace("@","_at_").replace(/\./g,"_dot_");
+    await ghPut("profiles/"+safe+".json",JSON.stringify(data,null,2),null,"Admin create user "+name);
+    uiAlert("createUserAlert","✅ משתמש נוצר בהצלחה!","success");
+    document.getElementById("newUserName").value=""; document.getElementById("newUserEmail").value=""; document.getElementById("newUserPhone").value="";
+    loadAdminData();
+  }catch(e){ uiAlert("createUserAlert","שגיאה: "+e.message); }
+}
 
-            if(currentUserData.requests) {
-                if(currentUserData.requests.site_request) alertsDiv.innerHTML += `<div class="alert alert-info" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span>🌐 בקשה: <b>${currentUserData.requests.site_request.url}</b></span><div><button class="btn btn-primary btn-sm" onclick="adminApproveSiteRequest('${currentUserData.requests.site_request.url}')">הוסף</button> <button class="btn btn-secondary btn-sm" onclick="adminDismissSiteRequest()">דחה</button></div></div>`;
-                if(currentUserData.requests.pause_request) alertsDiv.innerHTML += `<div class="alert alert-warn" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span>⏳ בקשת השהיה: <b>${currentUserData.requests.pause_request.time} דק'</b> — ${currentUserData.requests.pause_request.reason || 'ללא סיבה'}</span><button class="btn btn-success btn-sm" onclick="adminApprovePauseRequest()">אשר</button></div>`;
-                if(currentUserData.requests.pause && currentUserData.requests.pause.until) alertsDiv.innerHTML += `<div class="alert alert-warn" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span>⏳ השהיה פעילה עד: ${new Date(currentUserData.requests.pause.until).toLocaleTimeString('he-IL')}</span><button class="btn btn-danger btn-sm" onclick="adminCancelPause()">בטל</button></div>`;
-                if(currentUserData.requests.uninstall_requested && !currentUserData.requests.uninstall_approved) alertsDiv.innerHTML += `<div class="alert alert-error" style="display:flex; justify-content:space-between; align-items:center;"><span>🗑️ בקשת הסרה!</span><button class="btn btn-danger btn-sm" onclick="adminApproveUninstall()">אשר הסרה</button></div>`;
-            }
-            renderAdminDomainList();
-        } catch(e) {}
-    }
+async function adminOpenUser(email){
+  document.getElementById("adminModalOverlay").classList.add("open");
+  const alertsDiv=document.getElementById("adminUserAlerts"); alertsDiv.innerHTML='<div class="loader"></div>';
+  try{
+    const u=await fetchUserJson(email); currentAdminEditingEmail=email; currentUserData=u.content; currentUserFileSha=u.sha;
+    document.getElementById("editUserName").innerText="ניהול: "+currentUserData.name;
+    document.getElementById("adminBaseSitesToggle").checked=!!currentUserData.base_sites_enabled;
+    document.getElementById("adminGoogleSearchToggle").checked=!!currentUserData.google_search_enabled;
+    alertsDiv.innerHTML="";
+    const req=currentUserData.requests||{};
+    if(req.site_request) alertsDiv.innerHTML+=`<div class="alert alert-info" style="display:flex;justify-content:space-between;align-items:center"><span>🌐 <b>${req.site_request.url}</b></span><div style="display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="adminApproveSiteRequest('${req.site_request.url}')">אשר</button><button class="btn btn-ghost btn-sm" onclick="adminDismissSiteRequest()">דחה</button></div></div>`;
+    if(req.pause_request) alertsDiv.innerHTML+=`<div class="alert alert-warn" style="display:flex;justify-content:space-between;align-items:center"><span>⏳ השהיה: <b>${req.pause_request.time} דק'</b> — ${req.pause_request.reason||"ללא סיבה"}</span><button class="btn btn-success btn-sm" onclick="adminApprovePauseRequest()">אשר</button></div>`;
+    if(req.pause&&req.pause.until) alertsDiv.innerHTML+=`<div class="alert alert-warn" style="display:flex;justify-content:space-between;align-items:center"><span>⏳ פעיל עד: ${new Date(req.pause.until).toLocaleTimeString("he-IL")}</span><button class="btn btn-danger btn-sm" onclick="adminCancelPause()">בטל</button></div>`;
+    if(req.uninstall_requested&&!req.uninstall_approved) alertsDiv.innerHTML+=`<div class="alert alert-error" style="display:flex;justify-content:space-between;align-items:center"><span>🗑️ בקשת הסרה!</span><button class="btn btn-danger btn-sm" onclick="adminApproveUninstall()">אשר</button></div>`;
+    renderAdminDomainList();
+  }catch(e){ alertsDiv.innerHTML='<div class="alert alert-error">שגיאה בטעינה</div>'; }
+}
 
-    function renderAdminDomainList() {
-        const ul = document.getElementById('editUserDomainList'); ul.innerHTML = '';
-        currentUserData.allowed_domains.forEach((item, index) => { 
-            const parts = item.split('|');
-            const d = parts[0];
-            const n = parts.length > 1 ? ` <span style="color:#94a3b8; font-size:0.85rem;">(${parts[1]})</span>` : "";
-            ul.innerHTML += `<li><span>${d}${n}</span> <button class="btn btn-danger btn-sm" onclick="adminRemoveDomain(${index})">X</button></li>`; 
-        });
-    }
+function renderAdminDomainList(){
+  const ul=document.getElementById("editUserDomainList"); ul.innerHTML="";
+  (currentUserData.allowed_domains||[]).forEach((item,i)=>{
+    const [d,n]=item.split("|");
+    ul.innerHTML+=`<li><span>${d}${n?` <span style="color:#64748b;font-size:0.82rem">(${n})</span>`:""}</span><button class="btn btn-danger btn-sm" onclick="adminRemoveDomain(${i})">✕</button></li>`;
+  });
+}
 
-    async function adminAddDomain() {
-        const d = formatDomain(document.getElementById('newDomainInput').value); 
-        const n = document.getElementById('newDomainName').value.trim();
-        if(!d) return;
-        
-        const entry = n ? `${d}|${n}` : d;
-        const exists = currentUserData.allowed_domains.some(x => x.split('|')[0] === d);
-        
-        if (!exists) currentUserData.allowed_domains.push(entry);
-        document.getElementById('newDomainInput').value = ''; 
-        document.getElementById('newDomainName').value = ''; 
-        await saveAdminChanges("Add " + d); 
-        adminOpenUser(currentAdminEditingEmail);
-    }
-    
-    async function adminRemoveDomain(i) { currentUserData.allowed_domains.splice(i, 1); await saveAdminChanges("Removed domain"); adminOpenUser(currentAdminEditingEmail); }
-    async function adminApproveSiteRequest(url) { const c = formatDomain(url); if (!currentUserData.allowed_domains.some(x => x.split('|')[0] === c)) currentUserData.allowed_domains.push(c); currentUserData.requests.site_request = null; await saveAdminChanges("Approve site"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
-    async function adminDismissSiteRequest() { currentUserData.requests.site_request = null; await saveAdminChanges("Dismiss req"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
-    async function adminApprovePause() { currentUserData.requests.pause = null; await saveAdminChanges("Pause cleared"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
-    async function adminApprovePauseRequest() {
-        const req = currentUserData.requests.pause_request;
-        if (!req) return;
-        const untilUTC = new Date(Date.now() + parseInt(req.time)*60000).toISOString();
-        currentUserData.requests.pause = { time: req.time, reason: req.reason, date: new Date().toISOString(), until: untilUTC };
-        currentUserData.requests.pause_request = null;
-        await saveAdminChanges("Approved pause"); adminOpenUser(currentAdminEditingEmail); loadAdminData();
-    }
-    async function adminCancelPause() { currentUserData.requests.pause = null; await saveAdminChanges("Cancel pause"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
-    async function adminApproveUninstall() { if(!currentUserData.requests) currentUserData.requests = {}; currentUserData.requests.uninstall_approved = true; await saveAdminChanges("Approved uninstall"); closeAdminModal(); loadAdminData(); }
-    async function adminTriggerUninstall() { if(confirm("לאשר הסרה?")) { if(!currentUserData.requests) currentUserData.requests = {}; currentUserData.requests.uninstall_approved = true; await saveAdminChanges("Proactive uninstall"); closeAdminModal(); loadAdminData(); } }
-    async function adminTriggerPause() {
-        const m = document.getElementById('adminInitiatedPause').value; if(!m) return;
-        if(!currentUserData.requests) currentUserData.requests = {};
-        const untilUTC = new Date(Date.now() + parseInt(m)*60000).toISOString();
-        currentUserData.requests.pause = { time: m, reason: "יזום מנהל", date: new Date().toISOString(), until: untilUTC };
-        await saveAdminChanges("Trigger pause"); alert("הופעל בהצלחה!"); adminOpenUser(currentAdminEditingEmail);
-    }
-    async function adminToggleFeatures() {
-        currentUserData.base_sites_enabled = document.getElementById('adminBaseSitesToggle').checked;
-        currentUserData.google_search_enabled = document.getElementById('adminGoogleSearchToggle').checked;
-        try { await saveAdminChanges(`Toggled features`); } catch(e) { alert("שגיאה בעדכון"); }
-    }
-    async function saveAdminChanges(msg) { currentUserFileSha = await updateUserJson(currentAdminEditingEmail, currentUserData, currentUserFileSha, msg); }
-    function closeAdminModal() { document.getElementById('adminUserModal').style.display = 'none'; }
+async function adminAddDomain(){
+  const d=fmtDomain(document.getElementById("newDomainInput").value);
+  const n=document.getElementById("newDomainName").value.trim();
+  if(!d) return;
+  const entry=n?`${d}|${n}`:d;
+  if(!(currentUserData.allowed_domains||[]).some(x=>x.split("|")[0]===d)) currentUserData.allowed_domains.push(entry);
+  document.getElementById("newDomainInput").value=""; document.getElementById("newDomainName").value="";
+  await saveAdminChanges("Add domain "+d); adminOpenUser(currentAdminEditingEmail);
+}
+async function adminRemoveDomain(i){ currentUserData.allowed_domains.splice(i,1); await saveAdminChanges("Remove domain"); adminOpenUser(currentAdminEditingEmail); }
+async function adminApproveSiteRequest(url){ const c=fmtDomain(url); if(!(currentUserData.allowed_domains||[]).some(x=>x.split("|")[0]===c)) currentUserData.allowed_domains.push(c); currentUserData.requests.site_request=null; await saveAdminChanges("Approve site"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
+async function adminDismissSiteRequest(){ currentUserData.requests.site_request=null; await saveAdminChanges("Dismiss"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
+async function adminApprovePauseRequest(){
+  const req=currentUserData.requests.pause_request; if(!req) return;
+  currentUserData.requests.pause={time:req.time,reason:req.reason,date:new Date().toISOString(),until:new Date(Date.now()+parseInt(req.time)*60000).toISOString()};
+  currentUserData.requests.pause_request=null;
+  await saveAdminChanges("Approve pause"); adminOpenUser(currentAdminEditingEmail); loadAdminData();
+}
+async function adminCancelPause(){ currentUserData.requests.pause=null; await saveAdminChanges("Cancel pause"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
+async function adminApproveUninstall(){ if(!currentUserData.requests) currentUserData.requests={}; currentUserData.requests.uninstall_approved=true; await saveAdminChanges("Approve uninstall"); closeAdminModal(); loadAdminData(); }
+async function adminTriggerUninstall(){ if(!confirm("לאשר הסרה?")) return; if(!currentUserData.requests) currentUserData.requests={}; currentUserData.requests.uninstall_approved=true; await saveAdminChanges("Trigger uninstall"); closeAdminModal(); loadAdminData(); }
+async function adminTriggerPause(){
+  const m=document.getElementById("adminInitiatedPause").value; if(!m) return;
+  if(!currentUserData.requests) currentUserData.requests={};
+  currentUserData.requests.pause={time:m,reason:"יזום מנהל",date:new Date().toISOString(),until:new Date(Date.now()+parseInt(m)*60000).toISOString()};
+  await saveAdminChanges("Trigger pause"); alert("הופעל!"); adminOpenUser(currentAdminEditingEmail);
+}
+async function adminToggleFeatures(){
+  currentUserData.base_sites_enabled=document.getElementById("adminBaseSitesToggle").checked;
+  currentUserData.google_search_enabled=document.getElementById("adminGoogleSearchToggle").checked;
+  try{ await saveAdminChanges("Toggle features"); }catch(e){ alert("שגיאה"); }
+}
+function adminDownloadForUser(){ downloadInstallerScript(currentAdminEditingEmail); }
+async function saveAdminChanges(msg){ currentUserFileSha=await updateUserJson(currentAdminEditingEmail,currentUserData,currentUserFileSha,msg); }
+function closeAdminModal(){ document.getElementById("adminModalOverlay").classList.remove("open"); }
+
+// ── Base Whitelist ─────────────────────────────────────────────
+async function loadAdminBaseSites(){
+  document.getElementById("baseSitesLoading").style.display="block";
+  try{
+    const d=await ghGet("base_whitelist.json");
+    baseWhitelistSha=d.sha; baseWhitelistData=JSON.parse(b64d(d.content));
+    renderBaseDomainList();
+  }catch(e){ alert("שגיאה בטעינת הבסיס"); }
+  document.getElementById("baseSitesLoading").style.display="none";
+}
+function renderBaseDomainList(){
+  const ul=document.getElementById("baseDomainList"); ul.innerHTML="";
+  (baseWhitelistData&&baseWhitelistData.allowed_domains||[]).forEach((item,i)=>{
+    const [d,n]=item.split("|");
+    ul.innerHTML+=`<li><span>${d}${n?` <span style="color:#64748b;font-size:0.82rem">(${n})</span>`:""}</span><button class="btn btn-danger btn-sm" onclick="adminRemoveBaseDomain(${i})">✕</button></li>`;
+  });
+}
+async function adminAddBaseDomain(){
+  const d=fmtDomain(document.getElementById("newBaseDomainInput").value);
+  const n=document.getElementById("newBaseDomainName").value.trim();
+  if(!d||!baseWhitelistData) return;
+  const entry=n?`${d}|${n}`:d;
+  if(!baseWhitelistData.allowed_domains.some(x=>x.split("|")[0]===d)) baseWhitelistData.allowed_domains.push(entry);
+  document.getElementById("newBaseDomainInput").value=""; document.getElementById("newBaseDomainName").value="";
+  renderBaseDomainList(); await saveBaseWhitelist("Add base domain "+d);
+}
+async function adminRemoveBaseDomain(i){ baseWhitelistData.allowed_domains.splice(i,1); renderBaseDomainList(); await saveBaseWhitelist("Remove base domain"); }
+async function saveBaseWhitelist(msg){ baseWhitelistSha=await ghPut("base_whitelist.json",JSON.stringify(baseWhitelistData,null,2),baseWhitelistSha,msg); }
 </script>
 </body>
 </html>
