@@ -13,7 +13,7 @@
   "requests": {
     "pause": null,
     "uninstall_requested": true,
-    "uninstall_approved": false,
+    "uninstall_approved": true,
     "site_request": null
   }
 }
