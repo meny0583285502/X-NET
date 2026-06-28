@@ -269,3 +269,24 @@ if (-not $Silent) {
     Start-Process "https://meny0583285502.github.io/X-NET/?user=$UserEmail&installed=1"
     Start-Sleep 1
 }
+# DEBUG - הצג לוג ותוכן תיקיה
+if (-not $Silent) {
+    Write-Host ""
+    Write-Host "=== C:\XNET contents ===" -ForegroundColor Cyan
+    if (Test-Path $DIR) {
+        Get-ChildItem $DIR | ForEach-Object { Write-Host "  $($_.Name) ($($_.Length) bytes)" }
+    } else {
+        Write-Host "  (directory does not exist!)" -ForegroundColor Red
+    }
+    Write-Host ""
+    Write-Host "=== sync_log.txt ===" -ForegroundColor Cyan
+    $logFile = "$DIR\sync_log.txt"
+    if (Test-Path $logFile) {
+        Get-Content $logFile | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
+    } else {
+        Write-Host "  (log not created - sync crashed before first log line)" -ForegroundColor Red
+        Write-Host "  Check: is C:\XNET\sync.ps1 present?" -ForegroundColor Red
+    }
+    Write-Host "====================" -ForegroundColor Cyan
+    Read-Host "Press Enter to exit"
+}
