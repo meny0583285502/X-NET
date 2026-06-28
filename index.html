@@ -291,10 +291,10 @@ input[type=checkbox]{width:18px;height:18px;accent-color:#2563eb;cursor:pointer}
 
 <script>
 const ADMIN_EMAIL = "meny85502@gmail.com";
-const ADMIN_PASS  = "5502";
+const ADMIN_PASS  = "5502"; // ⚠️ יש לאמת בצד שרת (Workers KV) ולא כאן!
 const GH_OWNER   = "meny0583285502";
 const GH_REPO    = "X-NET";
-const GH_TOKEN   = ["ghp_","PuFjv7joXh","Tc5LLsZ71R","RCtVzf6Vw80WFkIE"].join("");
+const GH_TOKEN   = window.__XNET_TOKEN__ || ""; // ⚠️ יש לשים כאן Cloudflare Worker proxy - אסור token בצד לקוח!
 
 let currentUserEmail = "";
 let currentUserData  = null;
