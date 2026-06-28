@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X-NET Portal | v10.0</title>
+    <title>X-NET Portal</title>
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/3203/3203853.png" type="image/png">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -122,13 +122,13 @@
         </div>
 
         <div id="tab-pause" class="panel">
-            <div class="alert alert-info">המערכת מסתנכרנת אוטומטית כל 5 דקות. להחלה מיידית לחץ על הכפתור הירוק למעלה.</div>
+            <div class="alert alert-warn">⚠️ השהיה מחייבת אישור מנהל. שלח בקשה, והמנהל יפעיל אותה מהפאנל שלו.</div>
             <div class="field"><label>זמן מבוקש</label>
                 <select id="pauseTime"><option value="15">15 דקות</option><option value="30">30 דקות</option><option value="60">שעה אחת</option></select>
             </div>
             <div class="field"><label>סיבה</label><input type="text" id="pauseReason"></div>
             <div style="display:flex;gap:8px">
-                <button class="btn btn-primary" style="flex:1" onclick="userRequestPause('system')">📋 דרך המערכת</button>
+                <button class="btn btn-primary" style="flex:1" onclick="userRequestPause('system')">📋 שלח בקשה למנהל</button>
                 <button class="btn btn-secondary" style="flex:1" onclick="userRequestPause('email')">📧 דרך אימייל</button>
             </div>
         </div>
@@ -387,16 +387,20 @@
     async function userRequestPause(method) {
         if(!currentUserData) return;
         const time = document.getElementById('pauseTime').value;
-        if (method === 'email') window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=השהיה`);
-        else {
+        const reason = document.getElementById('pauseReason').value;
+        if (method === 'email') {
+            window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת השהיה ${time} דקות&body=סיבה: ${reason}`);
+        } else {
+            // שולח בקשה למנהל בלבד — ללא until (המנהל קובע)
             if(!currentUserData.requests) currentUserData.requests = {};
-            const untilUTC = new Date(Date.now() + parseInt(time)*60000).toISOString();
-            currentUserData.requests.pause = { time: time, reason: "", date: new Date().toISOString(), until: untilUTC };
+            currentUserData.requests.pause_request = { time: time, reason: reason, date: new Date().toISOString() };
+            // מוחק השהיה קודמת אם הייתה
+            currentUserData.requests.pause = null;
             try { 
-                currentUserFileSha = await updateUserJson(currentUserEmail, currentUserData, currentUserFileSha, "Pause"); 
-                uiAlert('userDashAlert', "בקשת השהיה נשמרה. לחץ על הכפתור הירוק למעלה להחלה מיידית.", "success"); 
+                currentUserFileSha = await updateUserJson(currentUserEmail, currentUserData, currentUserFileSha, "Pause request");
+                uiAlert('userDashAlert', "✅ בקשת ההשהיה נשלחה למנהל. המערכת תושהה לאחר אישורו.", "success"); 
                 refreshDashboard();
-            } catch(e){}
+            } catch(e){ uiAlert('userDashAlert', "שגיאה בשליחה", "error"); }
         }
     }
 
@@ -505,7 +509,8 @@
 
             if(currentUserData.requests) {
                 if(currentUserData.requests.site_request) alertsDiv.innerHTML += `<div class="alert alert-info" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span>🌐 בקשה: <b>${currentUserData.requests.site_request.url}</b></span><div><button class="btn btn-primary btn-sm" onclick="adminApproveSiteRequest('${currentUserData.requests.site_request.url}')">הוסף</button> <button class="btn btn-secondary btn-sm" onclick="adminDismissSiteRequest()">דחה</button></div></div>`;
-                if(currentUserData.requests.pause) alertsDiv.innerHTML += `<div class="alert alert-warn" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span>⏳ השהיה ל-${currentUserData.requests.pause.time} דק'</span><button class="btn btn-success btn-sm" onclick="adminApprovePause()">אשר ונקה</button></div>`;
+                if(currentUserData.requests.pause_request) alertsDiv.innerHTML += `<div class="alert alert-warn" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span>⏳ בקשת השהיה: <b>${currentUserData.requests.pause_request.time} דק'</b> — ${currentUserData.requests.pause_request.reason || 'ללא סיבה'}</span><button class="btn btn-success btn-sm" onclick="adminApprovePauseRequest()">אשר</button></div>`;
+                if(currentUserData.requests.pause && currentUserData.requests.pause.until) alertsDiv.innerHTML += `<div class="alert alert-warn" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span>⏳ השהיה פעילה עד: ${new Date(currentUserData.requests.pause.until).toLocaleTimeString('he-IL')}</span><button class="btn btn-danger btn-sm" onclick="adminCancelPause()">בטל</button></div>`;
                 if(currentUserData.requests.uninstall_requested && !currentUserData.requests.uninstall_approved) alertsDiv.innerHTML += `<div class="alert alert-error" style="display:flex; justify-content:space-between; align-items:center;"><span>🗑️ בקשת הסרה!</span><button class="btn btn-danger btn-sm" onclick="adminApproveUninstall()">אשר הסרה</button></div>`;
             }
             renderAdminDomainList();
@@ -541,6 +546,15 @@
     async function adminApproveSiteRequest(url) { const c = formatDomain(url); if (!currentUserData.allowed_domains.some(x => x.split('|')[0] === c)) currentUserData.allowed_domains.push(c); currentUserData.requests.site_request = null; await saveAdminChanges("Approve site"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
     async function adminDismissSiteRequest() { currentUserData.requests.site_request = null; await saveAdminChanges("Dismiss req"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
     async function adminApprovePause() { currentUserData.requests.pause = null; await saveAdminChanges("Pause cleared"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
+    async function adminApprovePauseRequest() {
+        const req = currentUserData.requests.pause_request;
+        if (!req) return;
+        const untilUTC = new Date(Date.now() + parseInt(req.time)*60000).toISOString();
+        currentUserData.requests.pause = { time: req.time, reason: req.reason, date: new Date().toISOString(), until: untilUTC };
+        currentUserData.requests.pause_request = null;
+        await saveAdminChanges("Approved pause"); adminOpenUser(currentAdminEditingEmail); loadAdminData();
+    }
+    async function adminCancelPause() { currentUserData.requests.pause = null; await saveAdminChanges("Cancel pause"); adminOpenUser(currentAdminEditingEmail); loadAdminData(); }
     async function adminApproveUninstall() { if(!currentUserData.requests) currentUserData.requests = {}; currentUserData.requests.uninstall_approved = true; await saveAdminChanges("Approved uninstall"); closeAdminModal(); loadAdminData(); }
     async function adminTriggerUninstall() { if(confirm("לאשר הסרה?")) { if(!currentUserData.requests) currentUserData.requests = {}; currentUserData.requests.uninstall_approved = true; await saveAdminChanges("Proactive uninstall"); closeAdminModal(); loadAdminData(); } }
     async function adminTriggerPause() {
