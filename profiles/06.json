@@ -10,10 +10,10 @@
   ],
   "requests": {
     "pause": {
-      "time": "15",
-      "reason": "",
-      "date": "2026-06-28T09:19:29.633Z",
-      "until": "2026-06-28T09:34:29.633Z"
+      "time": "20",
+      "reason": "יזום מנהל",
+      "date": "2026-06-28T09:20:34.254Z",
+      "until": "2026-06-28T09:40:34.254Z"
     },
     "uninstall_requested": false,
     "uninstall_approved": false,
