@@ -80,19 +80,24 @@ $s.Add('    exit')
 $s.Add('}')
 $s.Add('')
 $s.Add('# STEP 4: Pause check')
+$s.Add('$pauseActive = $false')
 $s.Add('if ($P.requests.pause -and $P.requests.pause.until) {')
 $s.Add('    try {')
 $s.Add('        $until = [datetime]::Parse($P.requests.pause.until).ToUniversalTime()')
 $s.Add('        if ((Get-Date).ToUniversalTime() -lt $until) {')
+$s.Add('            $pauseActive = $true')
+$s.Add('            # Still paused: open DNS, save status, exit')
 $s.Add('            Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object { try { Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses @("8.8.8.8") -EA SilentlyContinue } catch {} }')
 $s.Add('            ipconfig /flushdns | Out-Null')
 $s.Add('            @{ paused=$true; paused_until=$P.requests.pause.until; last_updated=(Get-Date -Format "yyyy-MM-dd HH:mm:ss"); user=$UserEmail } | ConvertTo-Json | Out-File "$DIR\status.json" -Encoding UTF8 -Force')
 $s.Add('            Log "PAUSED until $($P.requests.pause.until)"')
 $s.Add('            exit')
+$s.Add('        } else {')
+$s.Add('            # Pause EXPIRED: clear it and continue to block')
+$s.Add('            Log "Pause expired, resuming block"')
+$s.Add('            $P.requests.pause = $null')
 $s.Add('        }')
-$s.Add('        # Pause expired - clear it')
-$s.Add('        if ($P.requests.pause) { $P.requests.pause = $null }')
-$s.Add('    } catch {}')
+$s.Add('    } catch { Log "Pause parse error: $_" }')
 $s.Add('}')
 $s.Add('')
 $s.Add('# STEP 5: Build whitelist')
@@ -161,6 +166,53 @@ $s.Add('@{ installed=$true; paused=$false; base_sites_enabled=$P.base_sites_enab
 
 [IO.File]::WriteAllLines("$DIR\sync.ps1", $s, [Text.Encoding]::UTF8)
 if (-not $Silent) { Write-Host "[+] sync.ps1 written ($($s.Count) lines)." -ForegroundColor Green }
+
+# ==================================================
+# PHASE 1b - watcher.ps1 (instant GitHub change detection)
+# ==================================================
+$wLines = [System.Collections.Generic.List[string]]::new()
+$wLines.Add('# X-NET Watcher v1.0 - detects GitHub changes in 5 seconds')
+$wLines.Add('$DIR = "C:\XNET"')
+$wLines.Add('$GH_API = "https://api.github.com/repos/meny0583285502/X-NET"')
+$wLines.Add('$LOG = "$DIR\watcher_log.txt"')
+$wLines.Add('function Log($m) { "$(Get-Date -Format ''HH:mm:ss'') $m" | Out-File $LOG -Append -Encoding UTF8; if((Get-Item $LOG -EA SilentlyContinue).Length -gt 51200){(Get-Content $LOG|Select-Object -Last 50)|Out-File $LOG -Encoding UTF8 -Force} }')
+$wLines.Add('function Get-SHA($safe) { try { $h=@{Authorization="token $((Get-Content "$DIR\gh_token.txt" -First 1 -EA SilentlyContinue).Trim())"; "User-Agent"="XNET"}; return (Invoke-RestMethod "$GH_API/contents/profiles/$safe.json" -Headers $h -UseBasicParsing -EA Stop).sha } catch { return $null } }')
+$wLines.Add('function Run-Sync { Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\sync.ps1`"" -Verb RunAs -EA SilentlyContinue; Log "Sync triggered" }')
+$wLines.Add('$ef = "$DIR\user.txt"; if(-not(Test-Path $ef)){exit}')
+$wLines.Add('$UserEmail=(Get-Content $ef -First 1).Trim()')
+$wLines.Add('$Safe=$UserEmail -replace "@","_at_" -replace "\.","_dot_"')
+$wLines.Add('Log "Watcher started for $UserEmail"')
+$wLines.Add('# Wait for initial SHA (DNS might be 127.0.0.1 at start)')
+$wLines.Add('$lastSHA=""; $tries=0')
+$wLines.Add('while(-not $lastSHA -and $tries -lt 20){')
+$wLines.Add('    # Temporarily use 8.8.8.8 to get initial SHA')
+$wLines.Add('    Get-NetAdapter|Where-Object Status -eq Up|ForEach-Object{try{Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses @("8.8.8.8") -EA SilentlyContinue}catch{}}')
+$wLines.Add('    ipconfig /flushdns | Out-Null; Start-Sleep 2')
+$wLines.Add('    $lastSHA=Get-SHA $Safe')
+$wLines.Add('    Get-NetAdapter|Where-Object Status -eq Up|ForEach-Object{try{Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses @("127.0.0.1") -EA SilentlyContinue}catch{}}')
+$wLines.Add('    ipconfig /flushdns | Out-Null')
+$wLines.Add('    $tries++')
+$wLines.Add('}')
+$wLines.Add('if(-not $lastSHA){Log "Could not get initial SHA"; exit}')
+$wLines.Add('Log "Watching... SHA: $($lastSHA.Substring(0,[Math]::Min(8,$lastSHA.Length)))..."')
+$wLines.Add('while($true) {')
+$wLines.Add('    Start-Sleep 5')
+$wLines.Add('    # Quick SHA check via 8.8.8.8 (< 100ms)')
+$wLines.Add('    Get-NetAdapter|Where-Object Status -eq Up|ForEach-Object{try{Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses @("8.8.8.8") -EA SilentlyContinue}catch{}}')
+$wLines.Add('    ipconfig /flushdns | Out-Null')
+$wLines.Add('    $cur=Get-SHA $Safe')
+$wLines.Add('    Get-NetAdapter|Where-Object Status -eq Up|ForEach-Object{try{Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses @("127.0.0.1") -EA SilentlyContinue}catch{}}')
+$wLines.Add('    ipconfig /flushdns | Out-Null')
+$wLines.Add('    if($cur -and $cur -ne $lastSHA) {')
+$wLines.Add('        Log "CHANGE DETECTED! Triggering sync..."')
+$wLines.Add('        $lastSHA=$cur')
+$wLines.Add('        Run-Sync')
+$wLines.Add('        Start-Sleep 20')
+$wLines.Add('    }')
+$wLines.Add('}')
+
+[IO.File]::WriteAllLines("$DIR\watcher.ps1", $wLines, [Text.Encoding]::UTF8)
+if (-not $Silent) { Write-Host "[+] watcher.ps1 written." -ForegroundColor Green }
 
 # ==================================================
 # PHASE 2 - dns_server.ps1
@@ -293,11 +345,13 @@ if (-not $Silent) { Write-Host "[+] tray.ps1 written." -ForegroundColor Green }
 # ==================================================
 # PHASE 5 - Scheduled Tasks
 # ==================================================
-schtasks /delete /tn "XNET_DNS"  /f 2>$null | Out-Null
-schtasks /delete /tn "XNET_Sync" /f 2>$null | Out-Null
-schtasks /create /tn "XNET_DNS"  /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\dns_server.ps1`"" /sc onstart /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
-schtasks /create /tn "XNET_Sync" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\sync.ps1`""  /sc minute /mo 3 /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
-if (-not $Silent) { Write-Host "[+] Tasks: DNS=onstart, Sync=every 3min." -ForegroundColor Green }
+schtasks /delete /tn "XNET_DNS"     /f 2>$null | Out-Null
+schtasks /delete /tn "XNET_Sync"    /f 2>$null | Out-Null
+schtasks /delete /tn "XNET_Watcher" /f 2>$null | Out-Null
+schtasks /create /tn "XNET_DNS"     /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\dns_server.ps1`"" /sc onstart /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
+schtasks /create /tn "XNET_Sync"    /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\sync.ps1`"" /sc minute /mo 3 /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
+schtasks /create /tn "XNET_Watcher" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\watcher.ps1`"" /sc onstart /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
+if (-not $Silent) { Write-Host "[+] Tasks: DNS+Watcher=onstart, Sync=every 3min." -ForegroundColor Green }
 
 # ==================================================
 # PHASE 6 - Startup + launch
@@ -312,7 +366,9 @@ Get-WmiObject Win32_Process -Filter "name='powershell.exe'" | Where-Object { $_.
 Start-Sleep 1
 
 Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\dns_server.ps1`"" -Verb RunAs -EA SilentlyContinue
-Start-Sleep 3
+Start-Sleep 2
+Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\watcher.ps1`"" -Verb RunAs -EA SilentlyContinue
+Start-Sleep 1
 
 & "$DIR\sync.ps1"
 
