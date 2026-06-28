@@ -1,19 +1,19 @@
 {
-    "name":  "ח",
-    "phone":  "י",
-    "email":  "008",
-    "registered_at":  "2026-06-28T21:25:34.010Z",
-    "base_sites_enabled":  true,
-    "google_search_enabled":  true,
-    "allowed_domains":  [
-                            "meny0583285502.github.io",
-                            "hagizra.news"
-                        ],
-    "requests":  {
-                     "pause":  null,
-                     "uninstall_requested":  false,
-                     "uninstall_approved":  false,
-                     "site_request":  null
-                 },
-    "last_updated":  "2026-06-29 00:31:07"
+  "name": "ח",
+  "phone": "י",
+  "email": "008",
+  "registered_at": "2026-06-28T21:25:34.010Z",
+  "base_sites_enabled": true,
+  "google_search_enabled": true,
+  "allowed_domains": [
+    "meny0583285502.github.io",
+    "hagizra.news"
+  ],
+  "requests": {
+    "pause": null,
+    "uninstall_requested": true,
+    "uninstall_approved": false,
+    "site_request": null
+  },
+  "last_updated": "2026-06-29 00:31:07"
 }
