@@ -1,18 +1,18 @@
 {
-    "name":  "מ",
-    "phone":  "מ",
-    "email":  "009",
-    "registered_at":  "2026-06-28T22:13:30.040Z",
-    "base_sites_enabled":  false,
-    "google_search_enabled":  false,
-    "allowed_domains":  [
-                            "meny0583285502.github.io"
-                        ],
-    "requests":  {
-                     "pause":  null,
-                     "uninstall_requested":  false,
-                     "uninstall_approved":  false,
-                     "site_request":  null
-                 },
-    "last_updated":  "2026-06-29 01:13:50"
+  "name": "מ",
+  "phone": "מ",
+  "email": "009",
+  "registered_at": "2026-06-28T22:13:30.040Z",
+  "base_sites_enabled": false,
+  "google_search_enabled": true,
+  "allowed_domains": [
+    "meny0583285502.github.io"
+  ],
+  "requests": {
+    "pause": null,
+    "uninstall_requested": false,
+    "uninstall_approved": false,
+    "site_request": null
+  },
+  "last_updated": "2026-06-29 01:13:50"
 }
