@@ -10,7 +10,7 @@ $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIden
 if (-not $isAdmin) {
     $argList = "-ExecutionPolicy Bypass -File `"$($MyInvocation.MyCommand.Path)`""
     if ($UserEmail) { $argList += " -UserEmail `"$UserEmail`"" }
-    Start-Process powershell -ArgumentList $argList -Verb RunAs -Wait
+    Start-Process powershell -ArgumentList $argList -Verb RunAs
     exit
 }
 
