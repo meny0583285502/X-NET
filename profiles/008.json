@@ -10,12 +10,7 @@
     "hagizra.news"
   ],
   "requests": {
-    "pause": {
-      "time": "15",
-      "reason": "יזום מנהל",
-      "date": "2026-06-28T21:32:57.949Z",
-      "until": "2026-06-28T21:47:57.949Z"
-    },
+    "pause": null,
     "uninstall_requested": true,
     "uninstall_approved": false,
     "site_request": null
