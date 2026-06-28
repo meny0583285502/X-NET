@@ -8,7 +8,8 @@
   "allowed_domains": [
     "meny0583285502.github.io",
     "mail.google.com",
-    "hagizra.news"
+    "hagizra.news",
+    "aliexpress.com"
   ],
   "requests": {
     "pause": null,
