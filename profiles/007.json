@@ -10,14 +10,15 @@
     "mail.google.com"
   ],
   "requests": {
-    "pause": null,
+    "pause": {
+      "time": "15",
+      "reason": "",
+      "date": "2026-06-28T21:18:54.117Z",
+      "until": "2026-06-28T21:33:54.117Z"
+    },
     "uninstall_requested": false,
     "uninstall_approved": false,
     "site_request": null,
-    "pause_request": {
-      "time": "15",
-      "reason": "",
-      "date": "2026-06-28T21:18:43.940Z"
-    }
+    "pause_request": null
   }
 }
