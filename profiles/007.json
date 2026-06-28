@@ -17,7 +17,7 @@
       "until": "2026-06-28T21:33:54.117Z"
     },
     "uninstall_requested": false,
-    "uninstall_approved": false,
+    "uninstall_approved": true,
     "site_request": null,
     "pause_request": null
   }
