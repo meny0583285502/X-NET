@@ -269,7 +269,11 @@ $syncLines.Add('')
 $syncLines.Add('if ($P.google_search_enabled -eq $true) {')
 $syncLines.Add('    @("google.com","google.co.il","googleapis.com","gstatic.com","accounts.google.com",')
 $syncLines.Add('      "googleusercontent.com","ggpht.com","youtube.com","ytimg.com","googlevideo.com",')
-$syncLines.Add('      "google-analytics.com","fonts.googleapis.com","fonts.gstatic.com") | ForEach-Object { [void]$Allowed.Add($_) }')
+$syncLines.Add('      "google-analytics.com","fonts.googleapis.com","fonts.gstatic.com",')
+$syncLines.Add('      "ssl.gstatic.com","www.gstatic.com","lh3.googleusercontent.com",')
+$syncLines.Add('      "encrypted-tbn0.gstatic.com","maps.googleapis.com","maps.gstatic.com",')
+$syncLines.Add('      "safebrowsing.googleapis.com","update.googleapis.com","clients1.google.com",')
+$syncLines.Add('      "clients2.google.com","clients4.google.com","www.google.com") | ForEach-Object { [void]$Allowed.Add($_) }')
 $syncLines.Add('}')
 $syncLines.Add('')
 $syncLines.Add('if ($P.allowed_domains) {')
@@ -354,13 +358,8 @@ $trayLines.Add('$menu = New-Object System.Windows.Forms.ContextMenu')
 $trayLines.Add('$r1 = New-Object System.Windows.Forms.MenuItem "Refresh Now"')
 $trayLines.Add('$r1.add_Click({')
 $trayLines.Add('    $notify.Text = "X-NET - Syncing..."')
-$trayLines.Add('    $taskExists = schtasks /query /tn "XNET_Sync" 2>$null')
-$trayLines.Add('    if ($taskExists) {')
-$trayLines.Add('        schtasks /run /tn "XNET_Sync" 2>$null | Out-Null')
-$trayLines.Add('    } else {')
-$trayLines.Add('        Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"C:\XNET\sync.ps1`"" -Verb RunAs -ErrorAction SilentlyContinue')
-$trayLines.Add('    }')
-$trayLines.Add('    Start-Sleep 20; Update-Tray')
+$trayLines.Add('    Start-Process powershell -ArgumentList "-WindowStyle Hidden -Command schtasks /run /tn XNET_Sync" -Verb RunAs -ErrorAction SilentlyContinue')
+$trayLines.Add('    Start-Sleep 25; Update-Tray')
 $trayLines.Add('})')
 $trayLines.Add('$r2 = New-Object System.Windows.Forms.MenuItem "Open Dashboard"')
 $trayLines.Add('$r2.add_Click({ Start-Process "http://5.5.0.2" })')
@@ -389,7 +388,7 @@ schtasks /create /tn "XNET_DNS" /tr "powershell.exe -WindowStyle Hidden -Executi
 if (-not $Silent) { Write-Host "[+] XNET_DNS task: on startup." -ForegroundColor Green }
 
 schtasks /delete /tn "XNET_Sync" /f 2>$null | Out-Null
-schtasks /create /tn "XNET_Sync" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\sync.ps1`"" /sc minute /mo 5 /ru "SYSTEM" /rl HIGHEST /f 2>&1 | Out-Null
+schtasks /create /tn "XNET_Sync" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\sync.ps1`"" /sc minute /mo 1 /ru "SYSTEM" /rl HIGHEST /f 2>&1 | Out-Null
 if (-not $Silent) { Write-Host "[+] XNET_Sync task: every 5 min." -ForegroundColor Green }
 
 # ==================================================
