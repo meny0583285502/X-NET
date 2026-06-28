@@ -1,108 +1,108 @@
-# X-NET v10.0 - Full Fix (Re-resolve + Tray Timer + Sync Always Recreated)
+# X-NET v11.0 — ארכיטקטורה חדשה: התקנה חד פעמית + sync.ps1 עצמאי
+# install.ps1 רץ פעם אחת (התקנה / עדכון ידני). 
+# sync.ps1 הוא זה שרץ כל דקה ועושה את כל עבודת הסינון.
 param([string]$UserEmail = "", [switch]$Silent)
 
+$VERSION = "11.0"
 $DIR     = "C:\XNET"
 $HOSTS   = "$env:SystemRoot\System32\drivers\etc\hosts"
 $GH_RAW  = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
 
 if (-not (Test-Path $DIR)) { New-Item $DIR -ItemType Directory -Force | Out-Null }
 
+# שמירת / קריאת אימייל
 $EmailFile = "$DIR\user.txt"
-if ($UserEmail) { $UserEmail | Out-File $EmailFile -Encoding ASCII -Force }
+if ($UserEmail) { $UserEmail | Out-File $EmailFile -Encoding UTF8 -Force }
 elseif (Test-Path $EmailFile) { $UserEmail = (Get-Content $EmailFile -First 1).Trim() }
 else { if (-not $Silent) { Write-Host "ERROR: No email"; Read-Host }; exit }
 
-$Safe = $UserEmail -replace '@','_at_' -replace '\.','_dot_'
-if (-not $Silent) { Write-Host "===== X-NET v10.0 | $UserEmail =====" -ForegroundColor Cyan }
+if (-not $Silent) { Write-Host "===== X-NET v$VERSION | $UserEmail =====" -ForegroundColor Cyan }
 
 # ==========================================
-# 0. שחזור DNS לפני fetch (כדי שיהיה אינטרנט)
+# שלב 1: כתיבת sync.ps1 — הלב של המערכת
+# sync.ps1 הוא הסקריפט שרץ כל דקה.
+# הוא עצמאי לחלוטין — לא תלוי ב-install.ps1.
 # ==========================================
+$SyncScript = @'
+# X-NET sync.ps1 — רץ כל דקה כ-SYSTEM
+$DIR    = "C:\XNET"
+$HOSTS  = "$env:SystemRoot\System32\drivers\etc\hosts"
+$GH_RAW = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
+
+$EmailFile = "$DIR\user.txt"
+if (-not (Test-Path $EmailFile)) { exit }
+$UserEmail = (Get-Content $EmailFile -First 1).Trim()
+$Safe = $UserEmail -replace '@','_at_' -replace '\.','_dot_'
+
+# ── שלב א: שחרר DNS כדי שנוכל לגשת לאינטרנט ──
 Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
     Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue
 }
 ipconfig /flushdns | Out-Null
-Start-Sleep 2
+Start-Sleep -Seconds 2
 
-# שליפת פרופיל המשתמש מ-GitHub
+# ── שלב ב: משוך פרופיל מ-GitHub ──
 try {
     $P = Invoke-RestMethod "$GH_RAW/profiles/$Safe.json" -UseBasicParsing -ErrorAction Stop
 } catch {
-    if (-not $Silent) { Write-Host "ERROR: Failed to pull profile from GitHub." -ForegroundColor Red; Read-Host }
+    # אם נכשל — שמור DNS פתוח ונסה שוב בדקה הבאה
     exit
 }
 
-# ==========================================
-# 1. הסרה מלאה
-# ==========================================
+# ── שלב ג: הסרה מלאה ──
 if ($P.requests.uninstall_approved -eq $true) {
-    if (-not $Silent) { Write-Host "[!] Uninstalling X-NET..." -ForegroundColor Yellow }
-
     schtasks /delete /tn "XNET_Sync" /f 2>$null | Out-Null
-    schtasks /delete /tn "XNET_Blocker" /f 2>$null | Out-Null
-
     Get-WmiObject Win32_Process -Filter "name='powershell.exe'" |
-        Where-Object { $_.CommandLine -match "tray.ps1" -or $_.CommandLine -match "sync.ps1" } |
+        Where-Object { $_.CommandLine -match "tray.ps1" } |
         ForEach-Object { $_.Terminate() }
-
     Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
         Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue
     }
     attrib -r $HOSTS 2>$null
-    $h = Get-Content $HOSTS -Raw
-    $h = $h -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?", ""
-    [IO.File]::WriteAllText($HOSTS, $h, [Text.Encoding]::UTF8)
-
-    Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
+    $h = Get-Content $HOSTS -Raw -ErrorAction SilentlyContinue
+    if ($h) { [IO.File]::WriteAllText($HOSTS, ($h -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?",""), [Text.Encoding]::UTF8) }
     "HKLM:\SOFTWARE\Policies\Google\Chrome","HKLM:\SOFTWARE\Policies\Microsoft\Edge","HKLM:\SOFTWARE\Policies\Mozilla\Firefox" | ForEach-Object {
         Remove-ItemProperty $_ -Name "DnsOverHttpsMode","BuiltInDnsClientEnabled","DNSOverHTTPS" -ErrorAction SilentlyContinue
     }
+    Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
     ipconfig /flushdns | Out-Null
-
     Remove-Item "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\XNET_Tray.lnk" -Force -ErrorAction SilentlyContinue
     Start-Sleep 1
     Remove-Item $DIR -Recurse -Force -ErrorAction SilentlyContinue
-
-    if (-not $Silent) {
-        Write-Host "[+] Removed Successfully." -ForegroundColor Green
-        Read-Host "Press Enter to exit"
-    }
     exit
 }
 
-# ==========================================
-# 2. השהיה זמנית
-# ==========================================
-if ($null -ne $P.requests.pause -and $null -ne $P.requests.pause.until) {
+# ── שלב ד: השהיה זמנית ──
+if ($P.requests.pause -and $P.requests.pause.until) {
     try {
-        $UntilUTC = [datetime]::Parse($P.requests.pause.until).ToUniversalTime()
-        if ((Get-Date).ToUniversalTime() -lt $UntilUTC) {
-            Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
-                Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue
-            }
+        $until = [datetime]::Parse($P.requests.pause.until).ToUniversalTime()
+        if ((Get-Date).ToUniversalTime() -lt $until) {
+            # השהיה פעילה — השאר DNS פתוח, נקה hosts, צא
             attrib -r $HOSTS 2>$null
-            $h = Get-Content $HOSTS -Raw
-            $h = $h -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?", ""
-            [IO.File]::WriteAllText($HOSTS, $h, [Text.Encoding]::UTF8)
+            $h = Get-Content $HOSTS -Raw -ErrorAction SilentlyContinue
+            if ($h) { [IO.File]::WriteAllText($HOSTS, ($h -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?",""), [Text.Encoding]::UTF8) }
             ipconfig /flushdns | Out-Null
-            if (-not $Silent) { Write-Host "[~] PAUSED temporarily." -ForegroundColor Green; Start-Sleep 2 }
+            # עדכן status
+            @{ paused=$true; paused_until=$P.requests.pause.until; last_updated=(Get-Date -Format "yyyy-MM-dd HH:mm:ss"); user=$UserEmail } |
+                ConvertTo-Json | Out-File "$DIR\status.json" -Encoding UTF8 -Force
             exit
         }
     } catch {}
 }
 
-# ==========================================
-# 3. בניית Whitelist
-# ==========================================
+# ── שלב ה: בנה רשימת דומיינים מורשים ──
 $Allowed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 
-# שירותי בסיס של גוגל תמיד מורשים (לכניסה לאתר וכו')
-[void]$Allowed.Add("googleapis.com")
-[void]$Allowed.Add("gstatic.com")
-[void]$Allowed.Add("accounts.google.com")
-[void]$Allowed.Add("googleusercontent.com")
+# קריטיים תמיד
+@("googleapis.com","gstatic.com","accounts.google.com","googleusercontent.com",
+  "meny0583285502.github.io","raw.githubusercontent.com","github.com","api.github.com",
+  "api.emailjs.com","update.microsoft.com","windowsupdate.microsoft.com",
+  "download.windowsupdate.com","ctldl.windowsupdate.com","wustat.windows.com",
+  "dns.msftncsi.com","login.microsoftonline.com","login.live.com","microsoft.com",
+  "office.com","ocsp.digicert.com","ocsp.pki.goog","crl.microsoft.com","pki.goog"
+) | ForEach-Object { [void]$Allowed.Add($_) }
 
-# רשימת Base (אם מופעל)
+# base whitelist
 if ($P.base_sites_enabled -eq $true) {
     try {
         $Base = Invoke-RestMethod "$GH_RAW/base_whitelist.json" -UseBasicParsing -ErrorAction Stop
@@ -113,13 +113,10 @@ if ($P.base_sites_enabled -eq $true) {
     } catch {}
 }
 
-# חיפוש גוגל (אם מופעל)
-if ($P.google_search_enabled -eq $true) {
-    [void]$Allowed.Add("google.com")
-    [void]$Allowed.Add("google.co.il")
-}
+# גוגל
+if ($P.google_search_enabled -eq $true) { [void]$Allowed.Add("google.com"); [void]$Allowed.Add("google.co.il") }
 
-# דומיינים אישיים של המשתמש
+# אישי
 if ($P.allowed_domains) {
     $P.allowed_domains | ForEach-Object {
         $d = ($_ -split '\|')[0].Trim() -replace "^https?://","" -replace "/$","" -replace "^www\.",""
@@ -127,71 +124,50 @@ if ($P.allowed_domains) {
     }
 }
 
-# דומיינים קריטיים של המערכת (תמיד מורשים)
-@(
-    "meny0583285502.github.io","raw.githubusercontent.com","github.com","api.github.com",
-    "api.emailjs.com",
-    "update.microsoft.com","windowsupdate.microsoft.com","download.windowsupdate.com",
-    "ctldl.windowsupdate.com","wustat.windows.com","dns.msftncsi.com",
-    "login.microsoftonline.com","login.live.com","microsoft.com","office.com",
-    "ocsp.digicert.com","ocsp.pki.goog","crl.microsoft.com","pki.goog"
-) | ForEach-Object { [void]$Allowed.Add($_) }
+# ── שלב ו: כתוב whitelist.txt ──
+# זה הקובץ שממנו נעשה Resolve. DNS עדיין פתוח כאן!
+$AllowedList = $Allowed | Sort-Object
+$AllowedList | Out-File "$DIR\whitelist.txt" -Encoding UTF8 -Force
 
-# ==========================================
-# 4. Resolve IP — עם retry לכל דומיין
-# ==========================================
-if (-not $Silent) { Write-Host "[+] Resolving IPs (using ISP DNS)..." -ForegroundColor Yellow }
-
-# המתן קצת כדי שה-DNS יהיה זמין לאחר איפוס
-Start-Sleep -Seconds 3
-
+# ── שלב ז: Resolve — DNS עדיין פתוח! ──
+Start-Sleep -Seconds 1  # וודא שה-DNS התייצב
 $HostLines = [System.Collections.Generic.List[string]]::new()
 $ok = 0
 
-foreach ($root in $Allowed) {
+foreach ($root in $AllowedList) {
     $variants = @($root)
     if (-not $root.StartsWith("www.")) { $variants += "www.$root" }
-
     foreach ($v in $variants) {
-        $resolved = $false
-        # ניסיון resolve פעמיים (retry) — פותר את בעיית "לא התעדכן"
-        for ($attempt = 1; $attempt -le 2; $attempt++) {
-            try {
-                $ips = [Net.Dns]::GetHostAddresses($v) | Where-Object { $_.AddressFamily -eq 'InterNetwork' }
-                if ($ips) {
-                    foreach ($ip in $ips) {
-                        $HostLines.Add("$($ip.IPAddressToString)`t$v")
-                    }
-                    $ok++
-                    $resolved = $true
-                    break
-                }
-            } catch {}
-            if (-not $resolved -and $attempt -eq 1) { Start-Sleep -Milliseconds 500 }
-        }
+        try {
+            $ips = [Net.Dns]::GetHostAddresses($v) | Where-Object { $_.AddressFamily -eq 'InterNetwork' }
+            foreach ($ip in $ips) { $HostLines.Add("$($ip.IPAddressToString)`t$v") }
+            $ok++
+        } catch {}
     }
 }
 
-if (-not $Silent) { Write-Host "[+] Resolved $ok domains." -ForegroundColor Green }
-
-# ==========================================
-# 5. נעילת DNS + Firewall
-# ==========================================
+# ── שלב ח: נעל DNS ל-127.0.0.1 ──
 Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object {
-    $name = $_.Name; $idx = $_.InterfaceIndex
-    try {
-        Set-DnsClientServerAddress -InterfaceIndex $idx -ServerAddresses @("127.0.0.1") -ErrorAction SilentlyContinue
-        netsh interface ipv6 set dnsservers name="$name" static ::1 primary 2>&1 | Out-Null
-    } catch {}
+    try { Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses @("127.0.0.1") -ErrorAction SilentlyContinue } catch {}
 }
 Get-NetAdapterBinding | Where-Object { $_.ComponentID -eq "ms_tcpip6" -and $_.Enabled } |
     ForEach-Object { Disable-NetAdapterBinding -Name $_.Name -ComponentID "ms_tcpip6" -ErrorAction SilentlyContinue }
 
-# כתיבת hosts
+# חסימת DoH בדפדפנים
+foreach ($k in @("HKLM:\SOFTWARE\Policies\Google\Chrome","HKLM:\SOFTWARE\Policies\Microsoft\Edge")) {
+    if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
+    Set-ItemProperty $k "DnsOverHttpsMode" "off" -Force
+    Set-ItemProperty $k "BuiltInDnsClientEnabled" 0 -Type DWord -Force
+}
+$k = "HKLM:\SOFTWARE\Policies\Mozilla\Firefox"
+if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
+Set-ItemProperty $k "DNSOverHTTPS" '{"Enabled": false}' -Force
+
+# ── שלב ט: כתוב hosts ──
 attrib -r $HOSTS 2>$null
 $block = [System.Collections.Generic.List[string]]::new()
-$block.Add("# [XNET] DO NOT EDIT")
-$block.Add("# User: $UserEmail | Updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
+$block.Add("# [XNET] DO NOT EDIT — managed by X-NET sync")
+$block.Add("# Updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') | User: $UserEmail | Domains: $ok")
 $block.Add("127.0.0.1 localhost")
 $block.Add("::1 localhost")
 $block.Add("")
@@ -204,31 +180,31 @@ if (-not $existing) { $existing = "" }
 $existing = $existing -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?", ""
 [IO.File]::WriteAllText($HOSTS, $existing.TrimEnd() + "`r`n" + ($block -join "`r`n"), [Text.Encoding]::UTF8)
 
-# חסימת DoH בדפדפנים
-$k = "HKLM:\SOFTWARE\Policies\Google\Chrome"
-if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
-Set-ItemProperty $k "DnsOverHttpsMode" "off" -Force
-Set-ItemProperty $k "BuiltInDnsClientEnabled" 0 -Type DWord -Force
-
-$k = "HKLM:\SOFTWARE\Policies\Microsoft\Edge"
-if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
-Set-ItemProperty $k "BuiltInDnsClientEnabled" 0 -Type DWord -Force
-Set-ItemProperty $k "DnsOverHttpsMode" "off" -Force
-
-$k = "HKLM:\SOFTWARE\Policies\Mozilla\Firefox"
-if (-not (Test-Path $k)) { New-Item $k -Force | Out-Null }
-Set-ItemProperty $k "DNSOverHTTPS" '{"Enabled": false}' -Force
-
-# חוקי Firewall
-Remove-NetFirewallRule -DisplayName "XNET-*" -ErrorAction SilentlyContinue
-New-NetFirewallRule -DisplayName "XNET-Telegram"   -Direction Outbound -Action Block -RemoteAddress @("149.154.160.0/20","91.108.4.0/22","91.108.8.0/22","91.108.56.0/22","95.161.64.0/20") -Protocol Any -Profile Any -ErrorAction SilentlyContinue | Out-Null
-New-NetFirewallRule -DisplayName "XNET-VPN-UDP"    -Direction Outbound -Action Block -Protocol UDP -RemotePort @(1194,51820) -Profile Any -ErrorAction SilentlyContinue | Out-Null
-New-NetFirewallRule -DisplayName "XNET-Block-QUIC" -Direction Outbound -Action Block -Protocol UDP -RemotePort 443 -Profile Any -ErrorAction SilentlyContinue | Out-Null
+# Firewall (רק אם לא קיים)
+$fw = Get-NetFirewallRule -DisplayName "XNET-Telegram" -ErrorAction SilentlyContinue
+if (-not $fw) {
+    New-NetFirewallRule -DisplayName "XNET-Telegram"   -Direction Outbound -Action Block -RemoteAddress @("149.154.160.0/20","91.108.4.0/22","91.108.8.0/22","91.108.56.0/22","95.161.64.0/20") -Protocol Any -Profile Any -ErrorAction SilentlyContinue | Out-Null
+    New-NetFirewallRule -DisplayName "XNET-VPN-UDP"    -Direction Outbound -Action Block -Protocol UDP -RemotePort @(1194,51820) -Profile Any -ErrorAction SilentlyContinue | Out-Null
+    New-NetFirewallRule -DisplayName "XNET-Block-QUIC" -Direction Outbound -Action Block -Protocol UDP -RemotePort 443 -Profile Any -ErrorAction SilentlyContinue | Out-Null
+}
 
 ipconfig /flushdns | Out-Null
 
+# ── שלב י: עדכן status.json ──
+@{
+    installed=$true; paused=$false; mode="whitelist"
+    base_sites_enabled=$P.base_sites_enabled
+    google_search_enabled=$P.google_search_enabled
+    last_updated=(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+    user=$UserEmail; allowed=$ok; version="11.0"
+} | ConvertTo-Json | Out-File "$DIR\status.json" -Encoding UTF8 -Force
+'@
+
+$SyncScript | Out-File "$DIR\sync.ps1" -Encoding UTF8 -Force
+if (-not $Silent) { Write-Host "[+] sync.ps1 written." -ForegroundColor Green }
+
 # ==========================================
-# 6. Tray Icon — עם Timer שמתעדכן כל 30 שניות
+# שלב 2: Tray icon — עם כפתור רענון שמפעיל sync.ps1
 # ==========================================
 $TrayCode = @'
 $mutex = New-Object System.Threading.Mutex($false, "Global\XNET_TRAY_MUTEX")
@@ -242,60 +218,69 @@ $notify.Icon = [System.Drawing.SystemIcons]::Shield
 $notify.Visible = $true
 $notify.Text = "X-NET - טוען..."
 
-# קריאת status.json והצגת מידע ב-tooltip
-function Update-TrayTooltip {
-    $statusFile = "C:\XNET\status.json"
-    if (Test-Path $statusFile) {
-        try {
-            $s = Get-Content $statusFile -Raw | ConvertFrom-Json
-            $lastUpdate = $s.last_updated
-            $allowedCount = $s.allowed
-            $user = $s.user
-            $msg = "X-NET פעיל | $user`n$allowedCount דומיינים | עודכן: $lastUpdate"
-            # NotifyIcon.Text מוגבל ל-63 תווים
-            if ($msg.Length -gt 63) { $msg = $msg.Substring(0, 60) + "..." }
-            $notify.Text = $msg
-        } catch {
-            $notify.Text = "X-NET פעיל"
-        }
-    } else {
-        $notify.Text = "X-NET פעיל"
+function Run-Sync {
+    $syncFile = "C:\XNET\sync.ps1"
+    if (Test-Path $syncFile) {
+        Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$syncFile`"" -Verb RunAs -ErrorAction SilentlyContinue
     }
 }
 
-# ContextMenu עם כפתור רענון
+function Update-Tray {
+    $f = "C:\XNET\status.json"
+    if (Test-Path $f) {
+        try {
+            $s = Get-Content $f -Raw | ConvertFrom-Json
+            if ($s.paused) {
+                $notify.Icon = [System.Drawing.SystemIcons]::Warning
+                $t = "X-NET — מושהה | " + $s.paused_until
+            } else {
+                $notify.Icon = [System.Drawing.SystemIcons]::Shield
+                $t = "X-NET פעיל | " + $s.allowed + " דומיינים | " + $s.last_updated
+            }
+            if ($t.Length -gt 63) { $t = $t.Substring(0,60) + "..." }
+            $notify.Text = $t
+        } catch { $notify.Text = "X-NET פעיל" }
+    }
+}
+
 $menu = New-Object System.Windows.Forms.ContextMenu
+
 $refreshItem = New-Object System.Windows.Forms.MenuItem "🔄 רענן עכשיו"
 $refreshItem.add_Click({
     $notify.Text = "X-NET - מרענן..."
-    $emailFile = "C:\XNET\user.txt"
-    if (Test-Path $emailFile) {
-        $email = (Get-Content $emailFile -First 1).Trim()
-        Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"C:\XNET\install.ps1`" -UserEmail `"$email`" -Silent" -Verb RunAs -ErrorAction SilentlyContinue
-    }
-    Start-Sleep -Seconds 8
-    Update-TrayTooltip
+    Run-Sync
+    Start-Sleep -Seconds 12
+    Update-Tray
 })
+
+$openItem = New-Object System.Windows.Forms.MenuItem "🌐 פתח דשבורד"
+$openItem.add_Click({
+    $e = ""
+    if (Test-Path "C:\XNET\user.txt") { $e = (Get-Content "C:\XNET\user.txt" -First 1).Trim() }
+    Start-Process "https://meny0583285502.github.io/X-NET/?user=$e"
+})
+
 $exitItem = New-Object System.Windows.Forms.MenuItem "❌ סגור Tray"
 $exitItem.add_Click({ $notify.Visible = $false; [System.Windows.Forms.Application]::Exit() })
+
 $menu.MenuItems.Add($refreshItem) | Out-Null
-$menu.MenuItems.Add($exitItem) | Out-Null
+$menu.MenuItems.Add($openItem)    | Out-Null
+$menu.MenuItems.Add("-")          | Out-Null
+$menu.MenuItems.Add($exitItem)    | Out-Null
 $notify.ContextMenu = $menu
 
-# Double-click פותח את דף הניהול
 $notify.add_DoubleClick({
-    $emailFile = "C:\XNET\user.txt"
-    $email = ""
-    if (Test-Path $emailFile) { $email = (Get-Content $emailFile -First 1).Trim() }
-    Start-Process "https://meny0583285502.github.io/X-NET/?user=$email"
+    $e = ""
+    if (Test-Path "C:\XNET\user.txt") { $e = (Get-Content "C:\XNET\user.txt" -First 1).Trim() }
+    Start-Process "https://meny0583285502.github.io/X-NET/?user=$e"
 })
 
-# Timer — מתעדכן כל 30 שניות
+# Timer: כל 30 שניות מעדכן את ה-tooltip
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 30000
-$timer.add_Tick({ Update-TrayTooltip })
+$timer.add_Tick({ Update-Tray })
 $timer.Start()
-Update-TrayTooltip
+Update-Tray
 
 $form = New-Object System.Windows.Forms.Form
 $form.ShowInTaskbar = $false
@@ -305,65 +290,42 @@ $form.WindowState = "Minimized"
 
 $TrayCode | Out-File "$DIR\tray.ps1" -Encoding UTF8 -Force
 
-# Shortcut להפעלה עם Startup
+# Shortcut להפעלה עם סטארטאפ
 $WshShell = New-Object -ComObject WScript.Shell
-$Shortcut = $WshShell.CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\XNET_Tray.lnk")
-$Shortcut.TargetPath = "powershell.exe"
-$Shortcut.Arguments = "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\tray.ps1`""
-$Shortcut.Save()
+$sc = $WshShell.CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\XNET_Tray.lnk")
+$sc.TargetPath = "powershell.exe"
+$sc.Arguments  = "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\tray.ps1`""
+$sc.Save()
 
-# הרג tray ישן והפעלה מחדש
+# הרג tray ישן → הפעל חדש
 Get-WmiObject Win32_Process -Filter "name='powershell.exe'" |
-    Where-Object { $_.CommandLine -match "tray.ps1" } |
+    Where-Object { $_.CommandLine -match "tray\.ps1" } |
     ForEach-Object { $_.Terminate() }
 Start-Sleep 1
 Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\tray.ps1`"" -ErrorAction SilentlyContinue
 
-# ==========================================
-# 7. Sync Task — תמיד נמחק ונוצר מחדש!
-#    (זה הפיקס המרכזי — מבטיח שה-task תמיד עדכני)
-# ==========================================
-$SyncTask = "$DIR\sync.ps1"
+if (-not $Silent) { Write-Host "[+] Tray started." -ForegroundColor Green }
 
-# sync.ps1 — מוריד install.ps1 עדכני ומריץ אותו
-@"
-try {
-    Invoke-WebRequest '$GH_RAW/install.ps1' -OutFile '$DIR\install.ps1' -UseBasicParsing -ErrorAction Stop
-    & '$DIR\install.ps1' -UserEmail '$UserEmail' -Silent
-} catch {
-    # אם ה-download נכשל, הרץ את הגרסה המקומית
-    if (Test-Path '$DIR\install.ps1') {
-        & '$DIR\install.ps1' -UserEmail '$UserEmail' -Silent
-    }
-}
-"@ | Out-File $SyncTask -Encoding UTF8 -Force
-
-# מחק תמיד — ואז צור מחדש (הפיקס!)
+# ==========================================
+# שלב 3: Scheduled Task — מריץ sync.ps1 כל דקה
+# (תמיד מוחק ומחדש — לא סומכים על קיים)
+# ==========================================
 schtasks /delete /tn "XNET_Sync" /f 2>$null | Out-Null
 schtasks /create /tn "XNET_Sync" `
-    /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$SyncTask`"" `
-    /sc minute /mo 5 `
+    /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\sync.ps1`"" `
+    /sc minute /mo 1 `
     /ru "SYSTEM" /f 2>&1 | Out-Null
 
-if (-not $Silent) { Write-Host "[+] Sync Task created (every 5 minutes)." -ForegroundColor Green }
+if (-not $Silent) { Write-Host "[+] Scheduled Task: every 1 minute." -ForegroundColor Green }
 
 # ==========================================
-# 8. שמירת status.json (לשימוש ה-Tray)
+# שלב 4: הפעל sync.ps1 עכשיו (נועל מיד)
 # ==========================================
-@{
-    installed    = $true
-    mode         = "whitelist"
-    base_sites_enabled   = $P.base_sites_enabled
-    google_search_enabled = $P.google_search_enabled
-    last_updated = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-    user         = $UserEmail
-    allowed      = $Allowed.Count
-    version      = "10.0"
-} | ConvertTo-Json | Out-File "$DIR\status.json" -Encoding UTF8 -Force
+if (-not $Silent) { Write-Host "[+] Running first sync now..." -ForegroundColor Yellow }
+& "$DIR\sync.ps1"
 
 if (-not $Silent) {
-    Write-Host "[+] Done! $($Allowed.Count) domains allowed." -ForegroundColor Green
+    Write-Host "[+] Done! X-NET v$VERSION active." -ForegroundColor Green
     Start-Process "https://meny0583285502.github.io/X-NET/?user=$UserEmail&installed=1"
     Start-Sleep 1
-    exit
 }
