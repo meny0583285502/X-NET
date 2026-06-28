@@ -7,7 +7,8 @@
   "google_search_enabled": true,
   "allowed_domains": [
     "meny0583285502.github.io",
-    "hagizra.news"
+    "hagizra.news",
+    "github.com"
   ],
   "requests": {
     "pause": null,
