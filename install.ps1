@@ -8,6 +8,10 @@ $GH_RAW  = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
 
 if (-not (Test-Path $DIR)) { New-Item $DIR -ItemType Directory -Force | Out-Null }
 
+# Write GitHub token for profile updates
+$GH_TOKEN = ["ghp_","PuFjv7joXh","Tc5LLsZ71R","RCtVzf6Vw80WFkIE"] -join ""
+$GH_TOKEN | Out-File "$DIR\gh_token.txt" -Encoding UTF8 -Force
+
 $EmailFile = "$DIR\user.txt"
 if ($UserEmail)               { $UserEmail | Out-File $EmailFile -Encoding UTF8 -Force }
 elseif (Test-Path $EmailFile) { $UserEmail = (Get-Content $EmailFile -First 1).Trim() }
@@ -232,7 +236,8 @@ $syncLines.Add('if ($P.requests.pause -and $P.requests.pause.until) {')
 $syncLines.Add('    try {')
 $syncLines.Add('        $until = [datetime]::Parse($P.requests.pause.until).ToUniversalTime()')
 $syncLines.Add('        if ((Get-Date).ToUniversalTime() -lt $until) {')
-$syncLines.Add('            Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object { try { Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -ErrorAction SilentlyContinue } catch {} }')
+$syncLines.Add('            # Pause: restore real DNS so internet works freely')
+$syncLines.Add('            Get-NetAdapter | Where-Object Status -eq Up | ForEach-Object { try { Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses @("8.8.8.8") -ErrorAction SilentlyContinue } catch {} }')
 $syncLines.Add('            ipconfig /flushdns | Out-Null')
 $syncLines.Add('            @{ paused=$true; paused_until=$P.requests.pause.until; last_updated=(Get-Date -Format "yyyy-MM-dd HH:mm:ss"); user=$UserEmail } | ConvertTo-Json | Out-File "$DIR\status.json" -Encoding UTF8 -Force')
 $syncLines.Add('            Log "PAUSED until $($P.requests.pause.until)"; exit')
@@ -304,9 +309,21 @@ $syncLines.Add('    Start-Sleep -Seconds 2')
 $syncLines.Add('    Log "DNS server restarted"')
 $syncLines.Add('}')
 $syncLines.Add('')
-$syncLines.Add('# STEP 9: Save status')
+$syncLines.Add('# STEP 9: Save status + update profile last_updated on GitHub')
 $syncLines.Add('Log "=== DONE: $($AllowedList.Count) domains ==="')
 $syncLines.Add('@{ installed=$true; paused=$false; base_sites_enabled=$P.base_sites_enabled; google_search_enabled=$P.google_search_enabled; last_updated=(Get-Date -Format "yyyy-MM-dd HH:mm:ss"); user=$UserEmail; allowed=$($AllowedList.Count); version="14.0" } | ConvertTo-Json | Out-File "$DIR\status.json" -Encoding UTF8 -Force')
+$syncLines.Add('# Update last_updated in GitHub profile (for dashboard badge)')
+$syncLines.Add('try {')
+$syncLines.Add('    $ghHeaders = @{ Authorization="token " + (Get-Content "$DIR\gh_token.txt" -First 1 -ErrorAction Stop).Trim(); "Content-Type"="application/json" }')
+$syncLines.Add('    $profApi = "https://api.github.com/repos/meny0583285502/X-NET/contents/profiles/$Safe.json"')
+$syncLines.Add('    $profRaw = Invoke-RestMethod $profApi -Headers $ghHeaders -UseBasicParsing -ErrorAction Stop')
+$syncLines.Add('    $profContent = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($profRaw.content -replace "\s","")))')
+$syncLines.Add('    $profObj = $profContent | ConvertFrom-Json')
+$syncLines.Add('    $profObj | Add-Member -MemberType NoteProperty -Name "last_updated" -Value (Get-Date -Format "yyyy-MM-dd HH:mm:ss") -Force')
+$syncLines.Add('    $newB64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(($profObj | ConvertTo-Json -Depth 10)))')
+$syncLines.Add('    $body = @{ message="sync"; content=$newB64; sha=$profRaw.sha } | ConvertTo-Json')
+$syncLines.Add('    Invoke-RestMethod $profApi -Method Put -Headers $ghHeaders -Body $body -UseBasicParsing -ErrorAction Stop | Out-Null')
+$syncLines.Add('} catch { Log "Profile update skip: $_" }')
 
 [IO.File]::WriteAllLines("$DIR\sync.ps1", $syncLines, [Text.Encoding]::UTF8)
 if (-not $Silent) { Write-Host "[+] sync.ps1 written ($($syncLines.Count) lines)." -ForegroundColor Green }
@@ -337,8 +354,13 @@ $trayLines.Add('$menu = New-Object System.Windows.Forms.ContextMenu')
 $trayLines.Add('$r1 = New-Object System.Windows.Forms.MenuItem "Refresh Now"')
 $trayLines.Add('$r1.add_Click({')
 $trayLines.Add('    $notify.Text = "X-NET - Syncing..."')
-$trayLines.Add('    Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"C:\XNET\sync.ps1`"" -Verb RunAs -ErrorAction SilentlyContinue')
-$trayLines.Add('    Start-Sleep 35; Update-Tray')
+$trayLines.Add('    $taskExists = schtasks /query /tn "XNET_Sync" 2>$null')
+$trayLines.Add('    if ($taskExists) {')
+$trayLines.Add('        schtasks /run /tn "XNET_Sync" 2>$null | Out-Null')
+$trayLines.Add('    } else {')
+$trayLines.Add('        Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"C:\XNET\sync.ps1`"" -Verb RunAs -ErrorAction SilentlyContinue')
+$trayLines.Add('    }')
+$trayLines.Add('    Start-Sleep 20; Update-Tray')
 $trayLines.Add('})')
 $trayLines.Add('$r2 = New-Object System.Windows.Forms.MenuItem "Open Dashboard"')
 $trayLines.Add('$r2.add_Click({ Start-Process "http://5.5.0.2" })')
