@@ -11,7 +11,8 @@
     "hagizra.news",
     "aliexpress.com",
     "gsmexpertzone.com",
-    "queue.call2all.co.il"
+    "queue.call2all.co.il",
+    "chat.google.com"
   ],
   "requests": {
     "pause": {
@@ -22,11 +23,7 @@
     },
     "uninstall_requested": false,
     "uninstall_approved": false,
-    "site_request": {
-      "url": "chat.google.com",
-      "reason": "",
-      "date": "2026-06-28T23:39:12.317Z"
-    }
+    "site_request": null
   },
   "last_updated": "2026-06-29 02:00:50"
 }
