@@ -1,338 +1,1189 @@
-# X-NET v17.0 - install.ps1
-param([string]$UserEmail = "", [switch]$Silent)
+<!DOCTYPE html>
+<!-- saved from url=(0039)https://meny0583285502.github.io/X-NET/ -->
+<html dir="rtl" lang="he" data-theme="light"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
-$VERSION = "17.0"
-$DIR     = "C:\XNET"
-$HOSTS   = "$env:SystemRoot\System32\drivers\etc\hosts"
-$GH_RAW  = "https://raw.githubusercontent.com/meny0583285502/X-NET/main"
-$GH_IPS  = @("140.82.112.5","140.82.113.5","140.82.114.5","140.82.121.5")
-$GH_TOKEN = @("ghp_","PuFjv7joXh","Tc5LLsZ71R","RCtVzf6Vw80WFkIE") -join ""
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X-NET | מערכת סינון גלישה</title>
+<link rel="icon" href="data:image/svg+xml,&lt;svg xmlns=&#39;http://www.w3.org/2000/svg&#39; viewBox=&#39;0 0 100 100&#39;&gt;&lt;rect width=&#39;100&#39; height=&#39;100&#39; rx=&#39;22&#39; fill=&#39;%231a1f2e&#39;/&gt;&lt;path d=&#39;M50 15 L82 32 L82 55 C82 71 67 83 50 88 C33 83 18 71 18 55 L18 32 Z&#39; fill=&#39;none&#39; stroke=&#39;%234f8ef7&#39; stroke-width=&#39;5&#39;/&gt;&lt;path d=&#39;M35 50 L45 60 L65 40&#39; stroke=&#39;%234f8ef7&#39; stroke-width=&#39;5&#39; fill=&#39;none&#39; stroke-linecap=&#39;round&#39; stroke-linejoin=&#39;round&#39;/&gt;&lt;/svg&gt;">
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b27;
+  --surface2: #1c2333;
+  --border: #2a3347;
+  --border2: #3a4a63;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --text3: #6a7585;
+  --accent: #4f8ef7;
+  --accent2: #7c5ff7;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d29922;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,.4);
+}
+[data-theme=light] {
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --surface2: #f5f8fc;
+  --border: #d0d9e6;
+  --border2: #b0bdd0;
+  --text: #1a2235;
+  --text2: #4a5568;
+  --text3: #7a8898;
+  --shadow: 0 4px 24px rgba(0,0,0,.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background .2s, color .2s; }
 
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")) {
-    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`" -UserEmail `"$UserEmail`"" -Verb RunAs; exit
+/* Layout */
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; right: 0; bottom: 0; z-index: 10; }
+.main { flex: 1; margin-right: 220px; padding: 28px; max-width: 900px; }
+@media (max-width: 768px) { .sidebar { display: none; } .main { margin-right: 0; } }
+
+/* Sidebar */
+.sidebar-logo { padding: 20px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.sidebar-logo svg { flex-shrink: 0; }
+.sidebar-logo-text h1 { font-size: 1rem; font-weight: 800; color: var(--text); }
+.sidebar-logo-text p { font-size: 0.7rem; color: var(--text3); }
+.sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; color: var(--text2); transition: all .15s; text-decoration: none; }
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: rgba(79,142,247,.12); color: var(--accent); font-weight: 600; }
+.nav-item .icon { font-size: 1rem; width: 20px; text-align: center; }
+.sidebar-footer { padding: 12px 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.card-title { font-size: 0.9rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+
+/* Buttons */
+.btn { border: none; border-radius: var(--radius-sm); padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
+.btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(79,142,247,.3); }
+.btn-success { background: var(--green); color: #fff; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-warn { background: var(--yellow); color: #fff; }
+.btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+.btn-lg { padding: 12px 24px; font-size: 0.95rem; }
+.btn-block { width: 100%; justify-content: center; }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+/* Inputs */
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 0.8rem; color: var(--text2); margin-bottom: 5px; font-weight: 600; }
+.field input, .field select, .field textarea {
+  width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  padding: 9px 12px; font-size: 0.9rem; color: var(--text); background: var(--surface2);
+  outline: none; transition: border .2s; font-family: inherit;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+.field textarea { resize: vertical; min-height: 80px; }
+.field select option { background: var(--surface); }
+.input-row { display: flex; gap: 8px; }
+.input-row input { flex: 1; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 0.87rem; color: var(--text); background: var(--surface2); outline: none; }
+.input-row input:focus { border-color: var(--accent); }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: 0.73rem; font-weight: 700; }
+.badge-green { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+.badge-red { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.3); }
+.badge-blue { background: rgba(79,142,247,.15); color: var(--accent); border: 1px solid rgba(79,142,247,.3); }
+.badge-yellow { background: rgba(210,153,34,.15); color: var(--yellow); border: 1px solid rgba(210,153,34,.3); }
+
+/* Alerts */
+.alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.84rem; margin-bottom: 12px; border-right: 3px solid; }
+.alert-info { background: rgba(79,142,247,.1); color: #93c5fd; border-color: var(--accent); }
+.alert-success { background: rgba(63,185,80,.1); color: #86efac; border-color: var(--green); }
+.alert-error { background: rgba(248,81,73,.1); color: #fca5a5; border-color: var(--red); }
+.alert-warn { background: rgba(210,153,34,.1); color: #fcd34d; border-color: var(--yellow); }
+
+/* Toggle */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.toggle-row:last-child { border-bottom: none; }
+.toggle-info label { font-size: 0.88rem; font-weight: 600; color: var(--text); display: block; }
+.toggle-info p { font-size: 0.77rem; color: var(--text3); margin-top: 2px; }
+.toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--border2); border-radius: 22px; cursor: pointer; transition: .25s; }
+.toggle-slider:before { content: ""; position: absolute; height: 16px; width: 16px; right: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .25s; }
+.toggle input:checked + .toggle-slider { background: var(--accent); }
+.toggle input:checked + .toggle-slider:before { transform: translateX(-18px); }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th { text-align: right; padding: 10px 12px; color: var(--text3); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
+td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-title { font-size: 1.1rem; font-weight: 800; }
+
+/* Domain list */
+.domain-list { list-style: none; max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.domain-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem; }
+.domain-item:hover { border-color: var(--border2); }
+
+/* Views */
+.view { display: none; }
+.view.active { display: block; }
+
+/* Welcome screen */
+.welcome-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.welcome-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; width: 100%; max-width: 440px; box-shadow: var(--shadow); }
+.welcome-logo { text-align: center; margin-bottom: 28px; }
+.welcome-logo .shield { width: 64px; height: 64px; margin: 0 auto 12px; }
+.welcome-logo h1 { font-size: 1.8rem; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.welcome-logo p { font-size: 0.82rem; color: var(--text3); margin-top: 4px; }
+
+/* Stats */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.stat-val { font-size: 1.6rem; font-weight: 800; color: var(--accent); display: block; }
+.stat-label { font-size: 0.75rem; color: var(--text3); margin-top: 2px; }
+
+/* Platform cards */
+.platform-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.platform-card { border: 2px solid var(--border); border-radius: var(--radius); padding: 24px 16px; cursor: pointer; text-align: center; transition: all .15s; }
+.platform-card:hover { border-color: var(--accent); background: rgba(79,142,247,.06); }
+.platform-card .pc-icon { font-size: 2.2rem; margin-bottom: 8px; }
+.platform-card h3 { font-size: 0.95rem; font-weight: 700; }
+.platform-card p { font-size: 0.76rem; color: var(--text3); margin-top: 3px; }
+.platform-card.disabled { opacity: .45; cursor: not-allowed; }
+.platform-card.disabled:hover { border-color: var(--border); background: none; }
+
+/* Loader */
+.loader { border: 2px solid var(--border); border-top: 2px solid var(--accent); border-radius: 50%; width: 18px; height: 18px; animation: spin .7s linear infinite; display: inline-block; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Pause timer display */
+.pause-display { background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.3); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+.pause-time { font-size: 1.4rem; font-weight: 800; color: var(--yellow); font-variant-numeric: tabular-nums; }
+
+/* Page title */
+.page-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+.page-sub { font-size: 0.83rem; color: var(--text3); margin-bottom: 24px; }
+
+/* Unsaved indicator */
+.unsaved-bar { background: rgba(210,153,34,.12); border: 1px solid rgba(210,153,34,.3); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 16px; display: none; align-items: center; justify-content: space-between; }
+.unsaved-bar.show { display: flex; }
+
+/* Password strength */
+.pwd-strength { height: 3px; border-radius: 3px; margin-top: 6px; transition: all .3s; }
+</style>
+<script src="./X-NET _ מערכת סינון גלישה_files/card-injection.js.הורדה"></script><style>#netfree-popup-window-main{position:fixed;background:#ffffff;padding:0;margin:0;transition:right 0.3s ease, left 0.3s ease;z-index:9999999999;direction:rtl;box-sizing:border-box;top:0;bottom:0;height:100%;right:-250px;width:250px;background-color:rgba(0,0,255,0);pointer-events:none}#netfree-popup-window-hand-pull{background-image:url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4NCjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+DQo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgd2lkdGg9IjAuMTc3MjEzaW4iIGhlaWdodD0iMC44MjYwNTFpbiIgdmVyc2lvbj0iMS4xIiBzaGFwZS1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiIgdGV4dC1yZW5kZXJpbmc9Imdlb21ldHJpY1ByZWNpc2lvbiIgaW1hZ2UtcmVuZGVyaW5nPSJvcHRpbWl6ZVF1YWxpdHkiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIg0Kdmlld0JveD0iMCAwIDEwOTcxIDUxMTQxIg0KIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIj4NCiA8ZyBpZD0iTGF5ZXJfeDAwMjBfMSI+IA0KICA8Y2lyY2xlIGZpbGw9IiMyNDNFNEMiIGN4PSIzOTAyIiBjeT0iMzkwMiIgcj0iMzkwMiIvPg0KICA8Y2lyY2xlIGZpbGw9IiMyNDNFNEMiIGN4PSIzOTAyIiBjeT0iMTgzNDciIHI9IjM5MDIiLz4NCiAgPGNpcmNsZSBmaWxsPSIjMjQzRTRDIiBjeD0iMzkwMiIgY3k9IjMyNzkzIiByPSIzOTAyIi8+DQogIDxjaXJjbGUgZmlsbD0iIzI0M0U0QyIgY3g9IjM5MDIiIGN5PSI0NzIzOSIgcj0iMzkwMiIvPg0KICA8cmVjdCBmaWxsPSJub25lIiB3aWR0aD0iMTA5NzEiIGhlaWdodD0iNTExNDEiLz4NCiA8L2c+DQo8L3N2Zz4NCg==);background-size:88%;background-repeat:no-repeat;width:15px;left:-15px;height:50px;position:absolute;top:10px;bottom:10px;margin:auto;cursor:pointer;pointer-events:all}#netfree-popup-window-iframe{width:100%;height:100%;border:0;margin:0;padding:0;position:relative;display:block;visibility:hidden;transition:visibility 0.3s}#netfree-popup-window-main.active #netfree-popup-window-iframe{visibility:visible;transition:visibility 0.3s}.netfree-popup-window-mouseenter{opacity:.7;-webkit-filter:blur(2px)}.netfree-popup-window-click{opacity:.2}#netfree-popup-window-main.active{right:0px;pointer-events:all}#netfree-popup-window-main.h-position-left{right:auto;left:-250px}#netfree-popup-window-main.h-position-left.active{right:auto;left:0px}#netfree-popup-window-main.h-position-left #netfree-popup-window-hand-pull{left:auto;right:-15px;background-position-x:200%}#netfree-popup-window-main.v-position-top #netfree-popup-window-hand-pull{margin:20px 0 auto 0}#netfree-popup-window-main.v-position-bottom #netfree-popup-window-hand-pull{margin:auto 0 20px 0}@media print{#netfree-popup-window-main{display:none}#netfree-popup-window{display:none}}@media only screen and (max-height: 750px){#netfree-popup-window-main{right:-309px;width:309px}#netfree-popup-window-main.h-position-left{left:-309px}}@media only screen and (max-device-width: 760px) and (orientation: landscape){#netfree-popup-window-main{right:-280px;width:280px}#netfree-popup-window-main.h-position-left{left:-280px}}@media only screen and (max-device-width: 1200px) and (min-width: 760px) and (orientation: landscape){#netfree-popup-window-main{right:-302px;width:302px}#netfree-popup-window-main.h-position-left{left:-302px}}@media only screen and (max-device-width: 1200px) and (min-device-width: 750px) and (orientation: portrait){#netfree-popup-window-main{right:-270px;width:270px}#netfree-popup-window-main.h-position-left{left:-270px}}@media only screen and (max-device-width: 700px) and (orientation: portrait){#netfree-popup-window-main{right:-222px;width:222px}#netfree-popup-window-main.h-position-left{left:-222px}}@media print{#netfree-popup-window-main{display:none}}
+</style></head>
+<body>
+
+<!-- ===== WELCOME / LOGIN ===== -->
+<div id="welcomeScreen" class="welcome-wrap" style="display: none;">
+  <div class="welcome-card">
+    <div class="welcome-logo">
+      <svg class="shield" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <rect width="80" height="80" rx="18" fill="#161b27"></rect>
+        <path d="M40 10 L68 24 L68 45 C68 60 55 70 40 75 C25 70 12 60 12 45 L12 24 Z" fill="none" stroke="#4f8ef7" stroke-width="4"></path>
+        <path d="M27 40 L36 49 L53 32" stroke="#4f8ef7" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <h1>X-NET</h1>
+      <p>מערכת סינון גלישה מתקדמת</p>
+    </div>
+    <div id="loginAlert" class="alert" style="display:none"></div>
+    <div id="loginForm">
+      <div class="field"><label>אימייל</label><input id="loginEmail" type="email" placeholder="your@email.com" autocomplete="email"></div>
+      <div id="loginPassField" class="field" style="display:none"><label>קוד גישה</label><input id="loginPass" type="password" placeholder="••••••"></div>
+      <div id="loginRegFields" style="display:none">
+        <div class="field"><label>שם מלא</label><input id="loginName" placeholder="ישראל ישראלי"></div>
+        <div class="field"><label>טלפון</label><input id="loginPhone" placeholder="050-0000000"></div>
+      </div>
+      <button id="loginBtn" class="btn btn-primary btn-block btn-lg" onclick="handleLogin()" style="margin-top:4px">המשך ←</button>
+      <div style="text-align:center;margin-top:14px;font-size:0.8rem;color:var(--text3)">
+        <span id="loginToggleText">משתמש חדש? <a href="https://meny0583285502.github.io/X-NET/#" onclick="toggleRegMode()" style="color:var(--accent);text-decoration:none">הרשמה</a></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== USER DASHBOARD ===== -->
+<div id="userApp" class="app" style="display:none">
+  <main class="main">
+    <div id="userPauseBanner" class="alert alert-warn" style="display:none;margin-bottom:16px"></div>
+    <div id="userAlert" class="alert" style="display:none"></div>
+
+    <!-- Download button -->
+    <div class="card" style="background:linear-gradient(135deg,rgba(79,142,247,.12),rgba(124,95,247,.12));border-color:rgba(79,142,247,.3)">
+      <button class="btn btn-primary btn-block btn-lg" onclick="openPlatformModal()" style="font-size:1rem">
+        📥 הורד והפעל עדכון
+      </button>
+      <p style="text-align:center;font-size:0.78rem;color:var(--text3);margin-top:8px">לחץ בכל פעם שהמנהל שינה משהו</p>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="nav-item active" id="utab-sites" onclick="switchUserTab(&#39;sites&#39;,this)" style="flex:1;justify-content:center">🌐 אתרים</div>
+      <div class="nav-item" id="utab-request" onclick="switchUserTab(&#39;request&#39;,this)" style="flex:1;justify-content:center">📩 בקשה</div>
+      <div class="nav-item" id="utab-pause" onclick="switchUserTab(&#39;pause&#39;,this)" style="flex:1;justify-content:center">⏳ השהיה</div>
+      <div class="nav-item" id="utab-uninstall" onclick="switchUserTab(&#39;uninstall&#39;,this)" style="flex:1;justify-content:center">🗑️ הסרה</div>
+    </div>
+
+    <div id="upanel-sites" class="view active">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-header"><span class="card-title">🔓 פתיחת אפליקציות</span></div>
+        <p style="font-size:0.8rem;color:var(--text3);margin-bottom:12px">האפליקציות הבאות מותרות על ידי המנהל. לחץ להפעלת הרשאה:</p>
+        <div id="appButtons" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">אתרים פתוחים</span><span id="uDomainCount" class="badge badge-blue">0</span></div>
+        <ul id="userSitesList" class="domain-list"></ul>
+        <div id="userFlags" style="margin-top:12px;font-size:0.8rem;color:var(--text3);padding:10px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)"></div>
+      </div>
+    </div>
+
+    <div id="upanel-request" class="view">
+      <div class="card">
+        <div class="card-header"><span class="card-title">בקשת פתיחת אתר</span></div>
+        <div class="field"><label>כתובת האתר</label><input id="reqUrl" placeholder="example.com"></div>
+        <div class="field"><label>סיבה</label><input id="reqReason" placeholder="לצורך..."></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" style="flex:1" onclick="sendSiteRequest()">📋 שלח למנהל</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="sendSiteEmail()">📧 אימייל</button>
+        </div>
+        <div id="reqDone" class="alert alert-success" style="display:none;margin-top:10px">✅ נשלח!</div>
+      </div>
+    </div>
+
+    <div id="upanel-pause" class="view">
+      <div class="card">
+        <div class="card-header"><span class="card-title">בקשת השהיה</span></div>
+        <div class="alert alert-warn">השהיה מחייבת אישור מנהל מראש</div>
+        <div class="field" style="margin-top:12px"><label>זמן</label>
+          <select id="pauseTime">
+            <option value="15">15 דקות</option>
+            <option value="30">30 דקות</option>
+            <option value="60">שעה</option>
+            <option value="120">שעתיים</option>
+            <option value="240">4 שעות</option>
+            <option value="480">8 שעות</option>
+            <option value="1440">24 שעות</option>
+          </select>
+        </div>
+        <div class="field"><label>סיבה</label><input id="pauseReason" placeholder="לצורך..."></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-warn" style="flex:1" onclick="requestPause(&#39;system&#39;)">📋 שלח בקשה</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="requestPause(&#39;email&#39;)">📧 אימייל</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="upanel-uninstall" class="view">
+      <div class="card">
+        <div class="card-header"><span class="card-title">הסרת תוכנה</span></div>
+        <div id="uninstallMsg" class="alert alert-info">הסרה מחייבת אישור מנהל</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn btn-warn" style="flex:1" onclick="requestUninstall(&#39;system&#39;)">📋 בקש הסרה</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="requestUninstall(&#39;email&#39;)">📧 אימייל</button>
+        </div>
+        <button id="btnUninstallApproved" class="btn btn-danger btn-block" onclick="openPlatformModal()" disabled="">הסר מהמחשב (לאחר אישור)</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="32" height="32" viewBox="0 0 80 80"><rect width="80" height="80" rx="14" fill="#161b27"></rect><path d="M40 10 L68 24 L68 45 C68 60 55 70 40 75 C25 70 12 60 12 45 L12 24 Z" fill="none" stroke="#4f8ef7" stroke-width="4"></path><path d="M27 40 L36 49 L53 32" stroke="#4f8ef7" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <div class="sidebar-logo-text"><h1>X-NET</h1><p id="userSidebarName">טוען...</p></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div style="padding:6px 12px;font-size:0.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">אזור אישי</div>
+      <a class="nav-item active" onclick="switchUserTab(&#39;sites&#39;,this)"><span class="icon">🌐</span>אתרים פתוחים</a>
+      <a class="nav-item" onclick="switchUserTab(&#39;request&#39;,this)"><span class="icon">📩</span>בקשת פתיחה</a>
+      <a class="nav-item" onclick="switchUserTab(&#39;pause&#39;,this)"><span class="icon">⏳</span>בקשת השהיה</a>
+      <a class="nav-item" onclick="switchUserTab(&#39;uninstall&#39;,this)"><span class="icon">🗑️</span>הסרה</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="userStatusBadge" class="badge badge-green" style="margin-bottom:6px;justify-content:center">🛡️ מוגן</div>
+      <button class="btn btn-ghost btn-sm btn-block" onclick="toggleTheme()">🌙 כהה / בהיר</button>
+      <button class="btn btn-ghost btn-sm btn-block" onclick="logout()">יציאה</button>
+    </div>
+  </aside>
+</div>
+
+<!-- ===== ADMIN DASHBOARD ===== -->
+<div id="adminApp" class="app" style="display: flex;">
+  <main class="main">
+    <div id="adminAlert" class="alert" style="display:none"></div>
+
+    <!-- Users tab -->
+    <div id="apanel-users" class="view active">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div><div class="page-title">משתמשים</div><div class="page-sub">ניהול כל הפרופילים</div></div>
+        <button class="btn btn-primary" onclick="openCreateUser()">+ משתמש חדש</button>
+      </div>
+      <div class="stats-row" id="adminStats">
+        <div class="stat-card"><span class="stat-val" id="statTotal">4</span><span class="stat-label">סה"כ משתמשים</span></div>
+        <div class="stat-card"><span class="stat-val" id="statActive">0</span><span class="stat-label">פעילים</span></div>
+        <div class="stat-card"><span class="stat-val" id="statPending">2</span><span class="stat-label">ממתינים</span></div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="usersLoading" style="padding: 32px; text-align: center; color: var(--text3); display: none;"><div class="loader"></div> טוען...</div>
+        <div class="table-wrap"><table id="usersTable" style="display: table;">
+          <thead><tr><th>שם</th><th>מזהה</th><th>סטטוס</th><th>sync אחרון</th><th>פעולה</th></tr></thead>
+          <tbody id="usersBody"><tr>
+        <td><b>ח</b> <span style="color:var(--red)">●</span></td>
+        <td style="color:var(--text3);font-size:0.8rem">110</td>
+        <td><span class="badge badge-red">לא מחובר</span></td>
+        <td style="font-size:0.8rem;color:var(--text3)">2026-06-29 02:00:50</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openEditUser(&#39;110&#39;,&#39;4dd27b0c01b51f0d0789d4ff21dddf2ffdbff2fa&#39;)">⚙️</button></td>
+      </tr><tr>
+        <td><b>111</b> <span style="color:var(--red)">●</span></td>
+        <td style="color:var(--text3);font-size:0.8rem">111</td>
+        <td><span class="badge badge-yellow">מושהה</span></td>
+        <td style="font-size:0.8rem;color:var(--text3)">—</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openEditUser(&#39;111&#39;,&#39;9640be4858aa8eb37da3a0d00c1303c4a9012623&#39;)">⚙️</button></td>
+      </tr><tr>
+        <td><b>112</b></td>
+        <td style="color:var(--text3);font-size:0.8rem">112</td>
+        <td><span class="badge badge-red">לא מחובר</span></td>
+        <td style="font-size:0.8rem;color:var(--text3)">—</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openEditUser(&#39;112&#39;,&#39;6373150f9e5d528b5ea7636928eaaaa98b29e364&#39;)">⚙️</button></td>
+      </tr><tr>
+        <td><b>יצחק אריאלי</b></td>
+        <td style="color:var(--text3);font-size:0.8rem">a0583213161@gmail.com</td>
+        <td><span class="badge badge-red">לא מחובר</span></td>
+        <td style="font-size:0.8rem;color:var(--text3)">—</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openEditUser(&#39;a0583213161@gmail.com&#39;,&#39;e885235c1f3cf86b459c17bcb7c4d7a820646465&#39;)">⚙️</button></td>
+      </tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- Pending requests tab -->
+    <div id="apanel-requests" class="view">
+      <div class="page-title">בקשות ממתינות</div>
+      <div class="page-sub">בקשות שהמשתמשים שלחו — ללא קומיט עד שתאשר</div>
+      <div class="card" id="pendingRequestsCard">
+        <div id="pendingEmpty" style="text-align: center; padding: 24px; color: var(--text3); display: block;">אין בקשות ממתינות</div>
+        <ul id="pendingList" class="domain-list"></ul>
+      </div>
+    </div>
+
+    <!-- Base sites tab -->
+    <div id="apanel-base" class="view">
+      <div class="page-title">אתרים בסיסיים</div>
+      <div class="page-sub">פתוחים לכל משתמש עם Base מופעל</div>
+      <div id="baseUnsaved" class="unsaved-bar">
+        <span>⚠️ יש שינויים שלא נשמרו</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="loadBase()">בטל</button>
+          <button class="btn btn-success btn-sm" onclick="saveBase()">💾 שמור הכל</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">הוסף אתר</span></div>
+        <div class="input-row" style="margin-bottom:8px">
+          <input id="newBaseUrl" placeholder="example.com">
+          <input id="newBaseName" placeholder="שם (אופציונלי)" style="flex:2">
+          <button class="btn btn-primary btn-sm" onclick="addBaseDomain()">+ הוסף</button>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>ייבוא מרשימה (שורה לכל אתר)</label>
+          <textarea id="bulkImport" placeholder="example.com
+another.com
+..."></textarea>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="importBulk()" style="margin-bottom:12px">📋 ייבא רשימה</button>
+        <div id="baseLoading" style="display:none;text-align:center;padding:12px"><div class="loader"></div></div>
+        <ul id="baseDomainList" class="domain-list"></ul>
+      </div>
+    </div>
+
+    <!-- Settings tab -->
+    <div id="apanel-settings" class="view">
+      <div class="page-title">הגדרות מנהל</div>
+      <div class="page-sub">הגדרות מערכת ואבטחה</div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">שינוי סיסמה</span></div>
+        <div class="field"><label>סיסמה נוכחית</label><input type="password" id="curPass" placeholder="••••••"></div>
+        <div class="field">
+          <label>סיסמה חדשה</label>
+          <input type="password" id="newPass" placeholder="••••••" oninput="checkPwdStrength()">
+          <div id="pwdStrength" class="pwd-strength"></div>
+        </div>
+        <div class="field"><label>אישור סיסמה חדשה</label><input type="password" id="newPass2" placeholder="••••••"></div>
+        <button class="btn btn-primary" onclick="changePassword()">🔐 שנה סיסמה</button>
+        <div id="pwdAlert" class="alert" style="display:none;margin-top:10px"></div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="32" height="32" viewBox="0 0 80 80"><rect width="80" height="80" rx="14" fill="#161b27"></rect><path d="M40 10 L68 24 L68 45 C68 60 55 70 40 75 C25 70 12 60 12 45 L12 24 Z" fill="none" stroke="#4f8ef7" stroke-width="4"></path><path d="M27 40 L36 49 L53 32" stroke="#4f8ef7" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      <div class="sidebar-logo-text"><h1>X-NET</h1><p>פאנל ניהול</p></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div style="padding:6px 12px;font-size:0.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">ניהול</div>
+      <a class="nav-item active" onclick="switchAdminTab(&#39;users&#39;,this)"><span class="icon">👥</span>משתמשים</a>
+      <a class="nav-item" onclick="switchAdminTab(&#39;requests&#39;,this)"><span class="icon">📩</span>בקשות <span id="pendingBadge" style="display:none;background:var(--red);color:#fff;border-radius:99px;padding:1px 6px;font-size:0.7rem;margin-right:4px">0</span></a>
+      <a class="nav-item" onclick="switchAdminTab(&#39;base&#39;,this)"><span class="icon">🌍</span>אתרים בסיסיים</a>
+      <a class="nav-item" onclick="switchAdminTab(&#39;settings&#39;,this)"><span class="icon">⚙️</span>הגדרות</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn btn-ghost btn-sm btn-block" onclick="toggleTheme()">🌙 כהה / בהיר</button>
+      <button class="btn btn-ghost btn-sm btn-block" onclick="logout()">🔒 יציאה</button>
+    </div>
+  </aside>
+</div>
+
+<!-- ===== MODAL: Edit User ===== -->
+<div class="modal-overlay" id="editUserModal" onclick="if(event.target===this)closeModal(&#39;editUserModal&#39;)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="editUserTitle">משתמש</div>
+        <div id="editUserMeta" style="font-size:0.78rem;color:var(--text3);margin-top:2px"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal(&#39;editUserModal&#39;)">✕</button>
+    </div>
+    <div id="editUserAlerts"></div>
+
+    <!-- Profile info -->
+    <div class="card" style="margin-bottom:14px;padding:14px">
+      <div class="card-header" style="margin-bottom:10px"><span class="card-title">📊 פרטי פרופיל</span></div>
+      <div id="editUserInfo" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem;color:var(--text2)"></div>
+    </div>
+
+    <!-- Permissions -->
+    <div class="card" style="margin-bottom:14px;padding:14px">
+      <div class="card-header" style="margin-bottom:4px"><span class="card-title">⚙️ הרשאות</span></div>
+      <div class="toggle-row">
+        <div class="toggle-info"><label>אתרים בסיסיים</label><p>גישה לרשימת Base הכללית</p></div>
+        <label class="toggle"><input type="checkbox" id="eBase" onchange="markUnsaved()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info"><label>גוגל ו-YouTube</label><p>google.com + youtube.com</p></div>
+        <label class="toggle"><input type="checkbox" id="eGoogle" onchange="markUnsaved()"><span class="toggle-slider"></span></label>
+      </div>
+      <div style="margin-top:12px">
+        <div style="font-size:0.8rem;font-weight:700;color:var(--text2);margin-bottom:8px">📱 אפליקציות מורשות</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.83rem;cursor:pointer"><input type="checkbox" id="eAppTelegram" onchange="markUnsaved()"> ✈️ Telegram</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.83rem;cursor:pointer"><input type="checkbox" id="eAppWhatsapp" onchange="markUnsaved()"> 💬 WhatsApp</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.83rem;cursor:pointer"><input type="checkbox" id="eAppStore" onchange="markUnsaved()"> 🏪 Store</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sites -->
+    <div class="card" style="margin-bottom:14px;padding:14px">
+      <div class="card-header" style="margin-bottom:8px"><span class="card-title">🌐 אתרים אישיים</span></div>
+      <div class="input-row" style="margin-bottom:8px">
+        <input id="eDomainUrl" placeholder="example.com">
+        <input id="eDomainName" placeholder="שם (אופציונלי)" style="flex:2">
+        <button class="btn btn-primary btn-sm" onclick="addEditDomain()">+ הוסף</button>
+      </div>
+      <ul id="editDomainList" class="domain-list"></ul>
+    </div>
+
+    <!-- Unsaved indicator -->
+    <div id="editUnsaved" class="unsaved-bar" style="margin-bottom:14px">
+      <span>⚠️ יש שינויים שלא נשמרו</span>
+      <button class="btn btn-success btn-sm" onclick="saveEditUser()">💾 שמור</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="card" style="padding:14px">
+      <div class="card-header" style="margin-bottom:10px"><span class="card-title">⚡ פעולות</span></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <select id="ePauseTime" style="background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 10px;font-size:0.85rem;flex:1">
+          <option value="15">15 דקות</option>
+          <option value="30">30 דקות</option>
+          <option value="60">שעה</option>
+          <option value="120">שעתיים</option>
+          <option value="240">4 שעות</option>
+          <option value="480">8 שעות</option>
+          <option value="1440">24 שעות</option>
+        </select>
+        <button class="btn btn-warn" onclick="adminPause()">⏳ השהה</button>
+        <button class="btn btn-ghost btn-sm" onclick="adminCancelPause()">בטל השהיה</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="adminApproveUninstall()">✅ אשר הסרה</button>
+        <button class="btn btn-danger" style="flex:1" onclick="adminDeleteUser()">🗑️ מחק פרופיל</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: Create User ===== -->
+<div class="modal-overlay" id="createUserModal" onclick="if(event.target===this)closeModal(&#39;createUserModal&#39;)">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><div class="modal-title">+ משתמש חדש</div><button class="btn btn-ghost btn-sm" onclick="closeModal(&#39;createUserModal&#39;)">✕</button></div>
+    <div class="field"><label>שם מלא</label><input id="cuName" placeholder="ישראל ישראלי"></div>
+    <div class="field"><label>טלפון</label><input id="cuPhone" placeholder="050-0000000"></div>
+    <div class="field"><label>אימייל / מזהה</label><input id="cuEmail" placeholder="user@gmail.com"></div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px">
+      <div class="toggle-row">
+        <div class="toggle-info"><label>אתרים בסיסיים</label><p>ברירת מחדל: פעיל</p></div>
+        <label class="toggle"><input type="checkbox" id="cuBase" checked=""><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info"><label>גוגל ו-YouTube</label><p>ברירת מחדל: פעיל</p></div>
+        <label class="toggle"><input type="checkbox" id="cuGoogle" checked=""><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="createUser()">➕ צור משתמש</button>
+    <div id="cuAlert" class="alert" style="display:none;margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ===== MODAL: Platform ===== -->
+<div class="modal-overlay" id="platformModal" onclick="if(event.target===this)closeModal(&#39;platformModal&#39;)">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header"><div class="modal-title">📲 בחר פלטפורמה</div><button class="btn btn-ghost btn-sm" onclick="closeModal(&#39;platformModal&#39;)">✕</button></div>
+    <div class="platform-grid">
+      <div class="platform-card" onclick="downloadForPlatform(&#39;windows&#39;)">
+        <div class="pc-icon">🖥️</div><h3>Windows</h3><p>מחשב נייד / שולחני</p>
+      </div>
+      <div class="platform-card disabled">
+        <div class="pc-icon">📱</div><h3>Android</h3><p style="color:var(--red);font-weight:700">בקרוב</p>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-block" style="margin-top:14px" onclick="closeModal(&#39;platformModal&#39;)">ביטול</button>
+  </div>
+</div>
+
+<script>
+// ── Config ──
+const ADMIN_EMAIL = "meny85502@gmail.com";
+const GH_OWNER   = "meny0583285502";
+const GH_REPO    = "X-NET";
+const GH_TOKEN   = ["ghp_","PuFjv7joXh","Tc5LLsZ71R","RCtVzf6Vw80WFkIE"].join("");
+
+let currentUser = null, currentUserSha = "", currentUserEmail = "";
+let adminEditEmail = "", adminEditData = null, adminEditSha = "";
+let baseData = null, baseSha = "", baseModified = false;
+let editModified = false;
+let isRegMode = false;
+
+// ── Theme ──
+// ── Pending requests (localStorage) ──
+function loadPendingRequests(){
+  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+  const badge=document.getElementById('pendingBadge');
+  const list=document.getElementById('pendingList');
+  const empty=document.getElementById('pendingEmpty');
+  if(!list) return;
+  if(requests.length===0){ if(badge)badge.style.display='none'; if(empty)empty.style.display='block'; list.innerHTML=''; return; }
+  if(badge){ badge.style.display='inline'; badge.innerText=requests.length; }
+  if(empty) empty.style.display='none';
+  list.innerHTML='';
+  requests.forEach((req,i)=>{
+    const d=new Date(req.date).toLocaleString('he-IL');
+    list.innerHTML+=`<li class="domain-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <div style="display:flex;justify-content:space-between;width:100%">
+        <span>${req.type==='site'?'🌐 פתיחת אתר':'⏳ השהיה'}: <b>${req.type==='site'?req.url:req.time+' דקות'}</b></span>
+        <span style="font-size:0.75rem;color:var(--text3)">${req.email} | ${d}</span>
+      </div>
+      ${req.reason?`<span style="font-size:0.8rem;color:var(--text3)">סיבה: ${req.reason}</span>`:''}
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-success btn-sm" onclick="approvePendingRequest(${i})">✅ אשר</button>
+        <button class="btn btn-ghost btn-sm" onclick="dismissPendingRequest(${i})">✕ דחה</button>
+      </div>
+    </li>`;
+  });
 }
 
-if (-not (Test-Path $DIR)) { New-Item $DIR -ItemType Directory -Force | Out-Null }
-$GH_TOKEN | Out-File "$DIR\gh_token.txt" -Encoding UTF8 -Force
-
-# Lock XNET dir - SYSTEM full access, Users read-only (no delete)
-try {
-    $acl = Get-Acl $DIR
-    $acl.SetAccessRuleProtection($true, $false)
-    # SYSTEM - full control
-    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("SYSTEM","FullControl","ContainerInherit,ObjectInherit","None","Allow")))
-    # Administrators - full control
-    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("Administrators","FullControl","ContainerInherit,ObjectInherit","None","Allow")))
-    # Users - read only, NO delete, NO write
-    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("Users","ReadAndExecute","ContainerInherit,ObjectInherit","None","Allow")))
-    Set-Acl $DIR $acl -EA SilentlyContinue
-} catch {}
-
-$EmailFile = "$DIR\user.txt"
-if ($UserEmail)               { $UserEmail | Out-File $EmailFile -Encoding UTF8 -Force }
-elseif (Test-Path $EmailFile) { $UserEmail = (Get-Content $EmailFile -First 1).Trim() }
-else { if (-not $Silent) { Write-Host "ERROR: No email"; Read-Host }; exit }
-
-if (-not $Silent) { Write-Host "===== X-NET v$VERSION | $UserEmail =====" -ForegroundColor Cyan }
-
-# ==================================================
-# PHASE 1 - sync.ps1
-# ==================================================
-$s = [System.Collections.Generic.List[string]]::new()
-$s.Add('# X-NET sync.ps1 v17.0')
-$s.Add('$DIR    = "C:\XNET"')
-$s.Add('$GH_IPS = @("140.82.112.5","140.82.113.5","140.82.114.5","140.82.121.5")')
-$s.Add('$GH_RAW_IPS = @("185.199.108.133","185.199.109.133","185.199.110.133","185.199.111.133")')
-$s.Add('$HOSTS  = "$env:SystemRoot\System32\drivers\etc\hosts"')
-$s.Add('$LOG    = "$DIR\sync_log.txt"')
-$s.Add('function Log($m) { $l="$(Get-Date -Format ''HH:mm:ss'') $m"; $l|Out-File $LOG -Append -Encoding UTF8; if((Get-Item $LOG -EA SilentlyContinue).Length -gt 51200){(Get-Content $LOG|Select-Object -Last 50)|Out-File $LOG -Encoding UTF8 -Force} }')
-$s.Add('function GH-API($path) {')
-$s.Add('    $tok=(Get-Content "$DIR\gh_token.txt" -First 1 -EA SilentlyContinue).Trim()')
-$s.Add('    foreach($ip in $GH_IPS) {')
-$s.Add('        try { $h=@{Authorization="token $tok";"User-Agent"="XNET";Host="api.github.com"}; return Invoke-RestMethod "https://$ip/repos/meny0583285502/X-NET/$path" -Headers $h -UseBasicParsing -TimeoutSec 5 -EA Stop }')
-$s.Add('        catch {}')
-$s.Add('    }; return $null')
-$s.Add('}')
-$s.Add('function GH-RAW($path) {')
-$s.Add('    foreach($ip in $GH_RAW_IPS) {')
-$s.Add('        try { $h=@{"User-Agent"="XNET";Host="raw.githubusercontent.com"}; return Invoke-RestMethod "https://$ip/meny0583285502/X-NET/main/$path" -Headers $h -UseBasicParsing -TimeoutSec 5 -EA Stop }')
-$s.Add('        catch {}')
-$s.Add('    }; return $null')
-$s.Add('}')
-$s.Add('')
-$s.Add('$ef="$DIR\user.txt"; if(-not(Test-Path $ef)){exit}')
-$s.Add('$UserEmail=(Get-Content $ef -First 1).Trim()')
-$s.Add('$Safe=$UserEmail -replace "@","_at_" -replace "\.","_dot_"')
-$s.Add('Log "=== SYNC START ==="')
-$s.Add('')
-$s.Add('# STEP 1: Fetch profile via direct IP')
-$s.Add('$Praw=GH-API "contents/profiles/$Safe.json"')
-$s.Add('if(-not $Praw){ Log "Profile FAIL"; exit }')
-$s.Add('$P=[System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($Praw.content -replace "\s",""))) | ConvertFrom-Json')
-$s.Add('')
-$s.Add('# STEP 2: Uninstall')
-$s.Add('if($P.requests.uninstall_approved -eq $true) {')
-$s.Add('    Log "Uninstall triggered"')
-$s.Add('    Copy-Item "$DIR\uninstall.ps1" "$env:TEMP\xnet_u.ps1" -Force -EA SilentlyContinue')
-$s.Add('    Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$env:TEMP\xnet_u.ps1`"" -Verb RunAs; exit')
-$s.Add('}')
-$s.Add('')
-$s.Add('# STEP 3: Pause check')
-$s.Add('if($P.requests.pause -and $P.requests.pause.until) {')
-$s.Add('    try {')
-$s.Add('        $until=[datetime]::Parse($P.requests.pause.until).ToUniversalTime()')
-$s.Add('        if((Get-Date).ToUniversalTime() -lt $until) {')
-$s.Add('            Get-NetAdapter|Where-Object Status -eq Up|ForEach-Object{try{Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses @("8.8.8.8") -EA SilentlyContinue}catch{}}')
-$s.Add('            netsh advfirewall set allprofiles firewallpolicy blockinbound,allowoutbound 2>$null | Out-Null')
-$s.Add('            ipconfig /flushdns | Out-Null')
-$s.Add('            @{paused=$true;paused_until=$P.requests.pause.until;last_updated=(Get-Date -Format "yyyy-MM-dd HH:mm:ss");user=$UserEmail}|ConvertTo-Json|Out-File "$DIR\status.json" -Encoding UTF8 -Force')
-$s.Add('            Log "PAUSED until $($P.requests.pause.until)"; exit')
-$s.Add('        } else { $P.requests.pause=$null; Log "Pause expired, resuming" }')
-$s.Add('    } catch { Log "Pause error: $_" }')
-$s.Add('}')
-$s.Add('')
-$s.Add('# STEP 4: Build DNS whitelist')
-$s.Add('$Allowed=[System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)')
-$s.Add('@("meny0583285502.github.io","raw.githubusercontent.com","github.com","api.github.com",')
-$s.Add('  "api.emailjs.com","fonts.googleapis.com","fonts.gstatic.com",')
-$s.Add('  "update.microsoft.com","windowsupdate.microsoft.com","download.windowsupdate.com",')
-$s.Add('  "ctldl.windowsupdate.com","wustat.windows.com","login.microsoftonline.com",')
-$s.Add('  "login.live.com","microsoft.com","office.com","ocsp.digicert.com",')
-$s.Add('  "ocsp.pki.goog","crl.microsoft.com","pki.goog","dns.msftncsi.com") | ForEach-Object {[void]$Allowed.Add($_)}')
-$s.Add('')
-$s.Add('if($P.base_sites_enabled -eq $true) {')
-$s.Add('    $Base=GH-RAW "base_whitelist.json"')
-$s.Add('    if($Base) { $Base.allowed_domains|ForEach-Object{$d=$_.Trim() -replace "^https?://","" -replace "/$","" -replace "^www\.","";[void]$Allowed.Add($d)} }')
-$s.Add('    else { Log "Base FAIL" }')
-$s.Add('}')
-$s.Add('if($P.google_search_enabled -eq $true) {')
-$s.Add('    @("google.com","google.co.il","googleapis.com","gstatic.com","accounts.google.com","googleusercontent.com","ggpht.com","youtube.com","ytimg.com","googlevideo.com","ssl.gstatic.com","www.google.com","clients1.google.com","clients2.google.com") | ForEach-Object {[void]$Allowed.Add($_)}')
-$s.Add('}')
-$s.Add('if($P.allowed_domains) {')
-$s.Add('    $P.allowed_domains|ForEach-Object{$d=($_ -split "\|")[0].Trim() -replace "^https?://","" -replace "/$","" -replace "^www\.","";[void]$Allowed.Add($d)}')
-$s.Add('}')
-$s.Add('$AllowedList=$Allowed|Sort-Object')
-$s.Add('$AllowedList|Out-File "$DIR\whitelist.txt" -Encoding UTF8 -Force')
-$s.Add('')
-$s.Add('# STEP 5: Hosts file')
-$s.Add('attrib -r $HOSTS 2>$null')
-$s.Add('$block=@("# [XNET] DO NOT EDIT","127.0.0.1 localhost","::1 localhost","5.5.0.2 xnet.local","# [/XNET]")')
-$s.Add('$ex=Get-Content $HOSTS -Raw -EA SilentlyContinue; if(-not $ex){$ex=""}')
-$s.Add('$ex=$ex -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?",""')
-$s.Add('[IO.File]::WriteAllText($HOSTS,$ex.TrimEnd()+"`r`n"+($block -join "`r`n"),[Text.Encoding]::UTF8)')
-$s.Add('')
-$s.Add('# STEP 6: Lock DNS to 127.0.0.1')
-$s.Add('Get-NetAdapter|Where-Object Status -eq Up|ForEach-Object{try{Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ServerAddresses @("127.0.0.1") -EA SilentlyContinue}catch{}}')
-$s.Add('foreach($k in @("HKLM:\SOFTWARE\Policies\Google\Chrome","HKLM:\SOFTWARE\Policies\Microsoft\Edge")){if(-not(Test-Path $k)){New-Item $k -Force|Out-Null};Set-ItemProperty $k "DnsOverHttpsMode" "off" -Force -EA SilentlyContinue;Set-ItemProperty $k "BuiltInDnsClientEnabled" 0 -Type DWord -Force -EA SilentlyContinue}')
-$s.Add('Get-NetAdapterBinding|Where-Object{$_.ComponentID -eq "ms_tcpip6" -and $_.Enabled}|ForEach-Object{Disable-NetAdapterBinding -Name $_.Name -ComponentID "ms_tcpip6" -EA SilentlyContinue}')
-$s.Add('ipconfig /flushdns | Out-Null')
-$s.Add('')
-$s.Add('# STEP 7: Firewall - block specific apps, allow all else')
-$s.Add('Remove-NetFirewallRule -DisplayName "XNET-*" -EA SilentlyContinue')
-$s.Add('# Block Telegram IPs')
-$s.Add('New-NetFirewallRule -DisplayName "XNET-Block-Telegram" -Direction Outbound -Action Block -RemoteAddress @("149.154.160.0/20","91.108.4.0/22","91.108.8.0/22","91.108.56.0/22","95.161.64.0/20","91.105.192.0/23","185.76.151.0/24") -Protocol Any -Profile Any -EA SilentlyContinue | Out-Null')
-$s.Add('# Block WhatsApp Desktop IPs')
-$s.Add('New-NetFirewallRule -DisplayName "XNET-Block-WhatsApp" -Direction Outbound -Action Block -RemoteAddress @("157.240.0.0/16","31.13.64.0/18","185.60.216.0/22","179.60.192.0/22") -Protocol Any -Profile Any -EA SilentlyContinue | Out-Null')
-$s.Add('# Block Windows News')
-$s.Add('New-NetFirewallRule -DisplayName "XNET-Block-News" -Direction Outbound -Action Block -Program "%SystemRoot%\SystemApps\Microsoft.BingNews_8wekyb3d8bbwe\NewsAppPkg.exe" -Profile Any -EA SilentlyContinue | Out-Null')
-$s.Add('# Block Firefox')
-$s.Add('New-NetFirewallRule -DisplayName "XNET-Block-Firefox" -Direction Outbound -Action Block -Program "C:\Program Files\Mozilla Firefox\firefox.exe" -Profile Any -EA SilentlyContinue | Out-Null')
-$s.Add('Log "Firewall rules applied"')
-$s.Add('')
-$s.Add('# STEP 8: Ensure DNS server running')
-$s.Add('$dnsAlive=Get-WmiObject Win32_Process -Filter "name=''powershell.exe''" | Where-Object{$_.CommandLine -match "dns_server"}')
-$s.Add('if(-not $dnsAlive){')
-$s.Add('    Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\dns_server.ps1`"" -Verb RunAs -EA SilentlyContinue')
-$s.Add('    Start-Sleep 2; Log "DNS server restarted"')
-$s.Add('}')
-$s.Add('')
-$s.Add('# STEP 9: Save status')
-$s.Add('Log "=== DONE: $($AllowedList.Count) domains ==="')
-$s.Add('@{installed=$true;paused=$false;base_sites_enabled=$P.base_sites_enabled;google_search_enabled=$P.google_search_enabled;last_updated=(Get-Date -Format "yyyy-MM-dd HH:mm:ss");user=$UserEmail;allowed=$($AllowedList.Count);version="17.0"}|ConvertTo-Json|Out-File "$DIR\status.json" -Encoding UTF8 -Force')
-
-[IO.File]::WriteAllLines("$DIR\sync.ps1", $s, [Text.Encoding]::UTF8)
-if (-not $Silent) { Write-Host "[+] sync.ps1 written." -ForegroundColor Green }
-
-# ==================================================
-# PHASE 2 - watcher.ps1
-# ==================================================
-$w = [System.Collections.Generic.List[string]]::new()
-$w.Add('# X-NET Watcher v17.0')
-$w.Add('$DIR="C:\XNET"; $LOG="$DIR\watcher_log.txt"')
-$w.Add('$GH_IPS=@("140.82.112.5","140.82.113.5","140.82.114.5","140.82.121.5")')
-$w.Add('function Log($m){"$(Get-Date -Format ''HH:mm:ss'') $m"|Out-File $LOG -Append -Encoding UTF8;if((Get-Item $LOG -EA SilentlyContinue).Length -gt 51200){(Get-Content $LOG|Select-Object -Last 50)|Out-File $LOG -Encoding UTF8 -Force}}')
-$w.Add('function Get-SHA($safe){$tok=(Get-Content "$DIR\gh_token.txt" -First 1 -EA SilentlyContinue).Trim();foreach($ip in $GH_IPS){try{$h=@{Authorization="token $tok";"User-Agent"="XNET";Host="api.github.com"};return(Invoke-RestMethod "https://$ip/repos/meny0583285502/X-NET/contents/profiles/$safe.json" -Headers $h -UseBasicParsing -TimeoutSec 3 -EA Stop).sha}catch{}};return $null}')
-$w.Add('$ef="$DIR\user.txt"; if(-not(Test-Path $ef)){exit}')
-$w.Add('$UserEmail=(Get-Content $ef -First 1).Trim()')
-$w.Add('$Safe=$UserEmail -replace "@","_at_" -replace "\.","_dot_"')
-$w.Add('Log "Watcher started"')
-$w.Add('$lastSHA=$null; $tries=0')
-$w.Add('while(-not $lastSHA -and $tries -lt 10){$lastSHA=Get-SHA $Safe;$tries++;if(-not $lastSHA){Start-Sleep 5}}')
-$w.Add('if(-not $lastSHA){Log "Could not get SHA";exit}')
-$w.Add('Log "Watching SHA: $($lastSHA.Substring(0,8))..."')
-$w.Add('$lastSyncTime=[datetime]::MinValue')
-$w.Add('while($true){')
-$w.Add('    Start-Sleep 5')
-$w.Add('    $cur=Get-SHA $Safe')
-$w.Add('    if($cur -and $cur -ne $lastSHA){')
-$w.Add('        $sec=([datetime]::Now-$lastSyncTime).TotalSeconds')
-$w.Add('        if($sec -gt 30){')
-$w.Add('            Log "CHANGE - syncing"')
-$w.Add('            $lastSHA=$cur; $lastSyncTime=[datetime]::Now')
-$w.Add('            & "$DIR\sync.ps1"')
-$w.Add('            Start-Sleep 20')
-$w.Add('        } else { $lastSHA=$cur }')
-$w.Add('    }')
-$w.Add('}')
-
-[IO.File]::WriteAllLines("$DIR\watcher.ps1", $w, [Text.Encoding]::UTF8)
-if (-not $Silent) { Write-Host "[+] watcher.ps1 written." -ForegroundColor Green }
-
-# ==================================================
-# PHASE 3 - dns_server.ps1
-# ==================================================
-$d = [System.Collections.Generic.List[string]]::new()
-$d.Add('# X-NET DNS+HTTP Server v17.0')
-$d.Add('$DIR="C:\XNET"; $LOG="$DIR\dns_log.txt"; $DASH="https://meny0583285502.github.io/X-NET/"')
-$d.Add('function Log($m){"$(Get-Date -Format ''HH:mm:ss'') $m"|Out-File $LOG -Append -Encoding UTF8;if((Get-Item $LOG -EA SilentlyContinue).Length -gt 51200){(Get-Content $LOG|Select-Object -Last 50)|Out-File $LOG -Encoding UTF8 -Force}}')
-$d.Add('function Get-WL{$wl=@{};if(Test-Path "$DIR\whitelist.txt"){Get-Content "$DIR\whitelist.txt"|ForEach-Object{$x=$_.Trim().ToLower();if($x-and!$x.StartsWith("#")){$wl[$x]=$true}}};return $wl}')
-$d.Add('function Get-Domain($data){try{$i=12;$labels=@();while($i -lt $data.Length){$len=$data[$i];if($len -eq 0){break};$labels+=[System.Text.Encoding]::ASCII.GetString($data[($i+1)..($i+$len)]);$i+=$len+1};return($labels -join ".").ToLower()}catch{return""}}')
-$d.Add('function Fwd($data){try{$u=New-Object System.Net.Sockets.UdpClient;$u.Client.ReceiveTimeout=2000;$ep=[System.Net.IPEndPoint]::new([Net.IPAddress]::Parse("8.8.8.8"),53);[void]$u.Send($data,$data.Length,$ep);$rep=[System.Net.IPEndPoint]::new([Net.IPAddress]::Any,0);$r=$u.Receive([ref]$rep);$u.Close();return $r}catch{return $null}}')
-$d.Add('function NX($q){return $q[0..1]+[byte[]](0x81,0x83)+[byte[]](0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00)+$q[12..($q.Length-1)]}')
-$d.Add('if(-not(Get-NetIPAddress -IPAddress "5.5.0.2" -EA SilentlyContinue)){netsh interface ip add address "Loopback Pseudo-Interface 1" 5.5.0.2 255.255.255.255 2>$null|Out-Null;netsh interface ip add address "Loopback" 5.5.0.2 255.255.255.255 2>$null|Out-Null}')
-$d.Add('$http=New-Object System.Net.HttpListener')
-$d.Add('$http.Prefixes.Add("http://5.5.0.2/"); $http.Prefixes.Add("http://127.0.0.1:8080/")')
-$d.Add('try{$http.Start();Log "HTTP on 5.5.0.2"}catch{Log "HTTP fail: $_";$http=$null}')
-$d.Add('$sock=New-Object System.Net.Sockets.UdpClient 53')
-$d.Add('$sock.Client.ReceiveTimeout=400')
-$d.Add('Log "DNS started"; $wl=Get-WL; $wlTime=Get-Date')
-$d.Add('while($true){')
-$d.Add('    if((Get-Date)-$wlTime -gt [TimeSpan]::FromSeconds(30)){$wl=Get-WL;$wlTime=Get-Date}')
-$d.Add('    if($http -and $http.IsListening){try{$task=$http.GetContextAsync();if($task.Wait(5)){$ctx=$task.Result;$uf=(Get-Content "$DIR\user.txt" -First 1 -EA SilentlyContinue).Trim();$ctx.Response.Redirect($DASH+"?user="+$uf);$ctx.Response.Close()}}catch{}}')
-$d.Add('    try{')
-$d.Add('        $ep=[System.Net.IPEndPoint]::new([Net.IPAddress]::Any,0)')
-$d.Add('        $data=$sock.Receive([ref]$ep)')
-$d.Add('        $dom=Get-Domain $data; if(-not $dom){continue}')
-$d.Add('        $ok=$false; $parts=$dom -split "\."; for($j=0;$j -lt $parts.Count-1;$j++){$sub=($parts[$j..($parts.Count-1)])-join ".";if($wl.ContainsKey($sub)){$ok=$true;break}}')
-$d.Add('        $resp=if($ok){Fwd $data}else{NX $data}; if(-not $resp){$resp=NX $data}')
-$d.Add('        [void]$sock.Send($resp,$resp.Length,$ep)')
-$d.Add('    }catch [System.Net.Sockets.SocketException]{}catch{Log "err: $_"}}')
-
-[IO.File]::WriteAllLines("$DIR\dns_server.ps1", $d, [Text.Encoding]::UTF8)
-if (-not $Silent) { Write-Host "[+] dns_server.ps1 written." -ForegroundColor Green }
-
-# ==================================================
-# PHASE 4 - uninstall.ps1
-# ==================================================
-$u = [System.Collections.Generic.List[string]]::new()
-$u.Add('# X-NET Uninstall v17.0')
-$u.Add('Start-Sleep 2')
-$u.Add('schtasks /delete /tn "XNET_Sync" /f 2>$null | Out-Null')
-$u.Add('schtasks /delete /tn "XNET_DNS" /f 2>$null | Out-Null')
-$u.Add('schtasks /delete /tn "XNET_Watcher" /f 2>$null | Out-Null')
-$u.Add('Get-Process powershell -EA SilentlyContinue | Where-Object{$_.Id -ne $PID -and $_.MainWindowTitle -eq ""} | Stop-Process -Force -EA SilentlyContinue')
-$u.Add('Start-Sleep 1')
-$u.Add('$H="$env:SystemRoot\System32\drivers\etc\hosts"; attrib -r $H 2>$null')
-$u.Add('$h=Get-Content $H -Raw -EA SilentlyContinue; if($h){[IO.File]::WriteAllText($H,($h -replace "(?s)# \[XNET\].*?# \[/XNET\]\r?\n?",""),[Text.Encoding]::UTF8)}')
-$u.Add('Get-NetAdapter|Where-Object Status -eq Up|ForEach-Object{try{Set-DnsClientServerAddress -InterfaceIndex $_.InterfaceIndex -ResetServerAddress -EA SilentlyContinue}catch{}}')
-$u.Add('Remove-NetFirewallRule -DisplayName "XNET-*" -EA SilentlyContinue')
-$u.Add('netsh advfirewall set allprofiles firewallpolicy blockinbound,allowoutbound 2>$null | Out-Null')
-$u.Add('netsh interface ip delete address "Loopback Pseudo-Interface 1" 5.5.0.2 2>$null | Out-Null')
-$u.Add('netsh interface ip delete address "Loopback" 5.5.0.2 2>$null | Out-Null')
-$u.Add('foreach($k in @("HKLM:\SOFTWARE\Policies\Google\Chrome","HKLM:\SOFTWARE\Policies\Microsoft\Edge","HKLM:\SOFTWARE\Policies\Mozilla\Firefox")){Remove-ItemProperty $k -Name "DnsOverHttpsMode","BuiltInDnsClientEnabled","DNSOverHTTPS" -EA SilentlyContinue}')
-$u.Add('ipconfig /flushdns | Out-Null')
-$u.Add('Remove-Item "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\XNET_Tray.lnk" -Force -EA SilentlyContinue')
-$u.Add('Start-Sleep 1; Remove-Item "C:\XNET" -Recurse -Force -EA SilentlyContinue')
-
-[IO.File]::WriteAllLines("$DIR\uninstall.ps1", $u, [Text.Encoding]::UTF8)
-if (-not $Silent) { Write-Host "[+] uninstall.ps1 written." -ForegroundColor Green }
-
-# ==================================================
-# PHASE 5 - tray.ps1
-# ==================================================
-$t = [System.Collections.Generic.List[string]]::new()
-$t.Add('$mutex=New-Object System.Threading.Mutex($false,"Global\XNET_TRAY_MUTEX")')
-$t.Add('if(-not $mutex.WaitOne(0,$false)){exit}')
-$t.Add('Add-Type -AssemblyName System.Windows.Forms,System.Drawing,Microsoft.VisualBasic')
-$t.Add('$notify=New-Object System.Windows.Forms.NotifyIcon')
-$t.Add('$notify.Icon=[System.Drawing.SystemIcons]::Shield')
-$t.Add('$notify.Visible=$true; $notify.Text="X-NET Active"')
-$t.Add('function Update-Tray{$f="C:\XNET\status.json";if(-not(Test-Path $f)){return};try{$s=Get-Content $f -Raw|ConvertFrom-Json;$txt=if($s.paused){"X-NET - Paused"}else{"X-NET | "+$s.allowed+" | "+$s.last_updated};$notify.Icon=if($s.paused){[System.Drawing.SystemIcons]::Warning}else{[System.Drawing.SystemIcons]::Shield};$notify.Text=if($txt.Length -gt 63){$txt.Substring(0,60)+"..."}else{$txt}}catch{}}')
-$t.Add('$menu=New-Object System.Windows.Forms.ContextMenu')
-$t.Add('$r1=New-Object System.Windows.Forms.MenuItem "Refresh Now"')
-$t.Add('$r1.add_Click({$notify.Text="Syncing...";Start-Process powershell -ArgumentList "-WindowStyle Hidden -Command schtasks /run /tn XNET_Sync" -Verb RunAs -WindowStyle Hidden -EA SilentlyContinue;Start-Sleep 25;Update-Tray})')
-$t.Add('$r2=New-Object System.Windows.Forms.MenuItem "Open Dashboard"')
-$t.Add('$r2.add_Click({Start-Process "http://5.5.0.2"})')
-$t.Add('$r3=New-Object System.Windows.Forms.MenuItem "Open Log"')
-$t.Add('$r3.add_Click({if(Test-Path "C:\XNET\sync_log.txt"){Start-Process notepad "C:\XNET\sync_log.txt"}})')
-$t.Add('$r4=New-Object System.Windows.Forms.MenuItem "Exit (Admin only)"')
-$t.Add('$r4.add_Click({
-    $pw = [Microsoft.VisualBasic.Interaction]::InputBox("Enter admin password to exit X-NET:","X-NET","")
-    if($pw -eq (Get-Content "C:\XNET\gh_token.txt" -First 1 -EA SilentlyContinue).Trim().Substring(0,4)){
-        $notify.Visible=$false;[System.Windows.Forms.Application]::Exit()
-    } else { [System.Windows.Forms.MessageBox]::Show("Wrong password","X-NET") }
-})')
-$t.Add('$menu.MenuItems.Add($r1)|Out-Null;$menu.MenuItems.Add($r2)|Out-Null;$menu.MenuItems.Add($r3)|Out-Null;$menu.MenuItems.Add("-")|Out-Null;$menu.MenuItems.Add($r4)|Out-Null')
-$t.Add('$notify.ContextMenu=$menu; $notify.add_DoubleClick({Start-Process "http://5.5.0.2"})')
-$t.Add('$timer=New-Object System.Windows.Forms.Timer;$timer.Interval=30000')
-$t.Add('$timer.add_Tick({Update-Tray});$timer.Start();Update-Tray')
-$t.Add('$form=New-Object System.Windows.Forms.Form;$form.ShowInTaskbar=$false;$form.WindowState="Minimized"')
-$t.Add('[System.Windows.Forms.Application]::Run($form)')
-
-[IO.File]::WriteAllLines("$DIR\tray.ps1", $t, [Text.Encoding]::UTF8)
-if (-not $Silent) { Write-Host "[+] tray.ps1 written." -ForegroundColor Green }
-
-# ==================================================
-# PHASE 6 - Scheduled Tasks
-# ==================================================
-schtasks /delete /tn "XNET_DNS"     /f 2>$null | Out-Null
-schtasks /delete /tn "XNET_Sync"    /f 2>$null | Out-Null
-schtasks /delete /tn "XNET_Watcher" /f 2>$null | Out-Null
-schtasks /create /tn "XNET_DNS"     /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\dns_server.ps1`"" /sc onstart /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
-schtasks /create /tn "XNET_Sync"    /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\sync.ps1`"" /sc minute /mo 3 /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
-schtasks /create /tn "XNET_Watcher" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\watcher.ps1`"" /sc onstart /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
-if (-not $Silent) { Write-Host "[+] Tasks created." -ForegroundColor Green }
-
-# Protect tasks from non-admin deletion
-foreach ($task in @("XNET_DNS","XNET_Sync","XNET_Watcher")) {
-    $regPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\$task"
-    if (Test-Path $regPath) {
-        try {
-            $acl = Get-Acl $regPath
-            $acl.SetAccessRuleProtection($true, $false)
-            $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule("SYSTEM","FullControl","Allow")))
-            $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule("Administrators","FullControl","Allow")))
-            $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule("Users","ReadKey","Allow")))
-            Set-Acl $regPath $acl -EA SilentlyContinue
-        } catch {}
+async function approvePendingRequest(i){
+  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+  const req=requests[i];
+  if(!req) return;
+  try{
+    const{sha,data}=await fetchProfile(req.email);
+    if(req.type==='site'){
+      if(!data.allowed_domains) data.allowed_domains=[];
+      const d=fmtDomain(req.url);
+      if(!data.allowed_domains.some(x=>x.split('|')[0]===d)) data.allowed_domains.push(d);
+    } else if(req.type==='pause'){
+      if(!data.requests) data.requests={};
+      data.requests.pause={time:req.time,reason:req.reason,date:new Date().toISOString(),until:new Date(Date.now()+parseInt(req.time)*60000).toISOString()};
     }
+    await saveProfile(req.email,data,sha,"Approve "+req.type);
+    requests.splice(i,1);
+    localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
+    loadPendingRequests();
+    uiAlert('adminAlert','✅ אושר ונשמר','success');
+  }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
 }
-if (-not $Silent) { Write-Host "[+] Tasks protected from regular users." -ForegroundColor Green }
 
-# ==================================================
-# PHASE 7 - Startup + Launch
-# ==================================================
-$WshShell = New-Object -ComObject WScript.Shell
-$sc = $WshShell.CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\XNET_Tray.lnk")
-$sc.TargetPath = "powershell.exe"
-$sc.Arguments  = "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\tray.ps1`""
-$sc.Save()
-
-Get-WmiObject Win32_Process -Filter "name='powershell.exe'" | Where-Object { $_.CommandLine -match "tray\.ps1|dns_server|watcher" } | ForEach-Object { $_.Terminate() }
-Start-Sleep 1
-
-Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\dns_server.ps1`"" -Verb RunAs -EA SilentlyContinue
-Start-Sleep 2
-Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\watcher.ps1`"" -Verb RunAs -EA SilentlyContinue
-Start-Sleep 1
-
-& "$DIR\sync.ps1"
-
-Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\tray.ps1`"" -EA SilentlyContinue
-
-if (-not $Silent) {
-    Write-Host "[+] X-NET v$VERSION active!" -ForegroundColor Green
-    if (Test-Path "$DIR\sync_log.txt") { Get-Content "$DIR\sync_log.txt" | Select-Object -Last 5 | Write-Host -ForegroundColor Yellow }
-    Read-Host "Press Enter to open dashboard"
-    Start-Process "http://5.5.0.2"
+function dismissPendingRequest(i){
+  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+  requests.splice(i,1);
+  localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
+  loadPendingRequests();
 }
+
+function toggleTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  document.documentElement.setAttribute('data-theme', isLight ? '' : 'light');
+  localStorage.setItem('xnet_theme', isLight ? 'dark' : 'light');
+}
+(function(){ if(localStorage.getItem('xnet_theme')==='light') document.documentElement.setAttribute('data-theme','light'); })();
+
+// ── Helpers ──
+const b64d = s => decodeURIComponent(escape(atob(s)));
+const b64e = s => btoa(unescape(encodeURIComponent(s)));
+function fmtDomain(s){ return (s||"").replace(/^https?:\/\//i,"").replace(/^www\./i,"").replace(/\/.*$/,"").trim().toLowerCase(); }
+function uiAlert(id,msg,type="error"){ const el=document.getElementById(id); el.style.display="block"; el.className="alert alert-"+type; el.innerText=msg; setTimeout(()=>el.style.display="none",5000); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function switchUserTab(tab,el){
+  document.querySelectorAll('#userApp .nav-item').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('[id^=upanel-]').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('[id^=utab-]').forEach(x=>x.classList.remove('active'));
+  document.getElementById('upanel-'+tab).classList.add('active');
+  if(el) el.classList.add('active');
+}
+function switchAdminTab(tab,el){
+  document.querySelectorAll('#adminApp .nav-item').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('[id^=apanel-]').forEach(x=>x.classList.remove('active'));
+  document.getElementById('apanel-'+tab).classList.add('active');
+  if(el) el.classList.add('active');
+  if(tab==='base') loadBase();
+  if(tab==='requests') loadPendingRequests();
+}
+function markUnsaved(){ editModified=true; document.getElementById('editUnsaved').classList.add('show'); }
+
+// ── GitHub API ──
+async function ghGet(path){
+  const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{headers:{Authorization:"token "+GH_TOKEN,"User-Agent":"XNET"}});
+  if(!r.ok) throw new Error(r.status+" "+path);
+  return r.json();
+}
+async function ghPut(path,content,sha,msg){
+  const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{
+    method:"PUT",headers:{Authorization:"token "+GH_TOKEN,"Content-Type":"application/json","User-Agent":"XNET"},
+    body:JSON.stringify({message:msg,content:b64e(content),sha:sha||undefined})
+  });
+  const d=await r.json(); if(!r.ok) throw new Error(d.message); return d.content.sha;
+}
+async function ghDelete(path,sha,msg){
+  const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`,{
+    method:"DELETE",headers:{Authorization:"token "+GH_TOKEN,"Content-Type":"application/json","User-Agent":"XNET"},
+    body:JSON.stringify({message:msg,sha:sha})
+  });
+  if(!r.ok){ const d=await r.json(); throw new Error(d.message); }
+}
+function safeEmail(e){ return e.replace("@","_at_").replace(/\./g,"_dot_"); }
+async function fetchProfile(email){ const d=await ghGet("profiles/"+safeEmail(email)+".json"); return{sha:d.sha,data:JSON.parse(b64d(d.content))}; }
+async function saveProfile(email,data,sha,msg){ return ghPut("profiles/"+safeEmail(email)+".json",JSON.stringify(data,null,2),sha,msg||"update"); }
+
+// ── Admin password ──
+async function getAdminPass(){
+  try{ const d=await ghGet("admin_config.json"); const c=JSON.parse(b64d(d.content)); return{pass:c.password,sha:d.sha}; }
+  catch{ return{pass:"5502",sha:null}; }
+}
+
+// ── Login ──
+let loginStep = 0;
+function toggleRegMode(){ isRegMode=!isRegMode; document.getElementById('loginRegFields').style.display=isRegMode?'block':'none'; document.getElementById('loginToggleText').innerHTML=isRegMode?'כבר רשום? <a href="#" onclick="toggleRegMode()" style="color:var(--accent);text-decoration:none">כניסה</a>':'משתמש חדש? <a href="#" onclick="toggleRegMode()" style="color:var(--accent);text-decoration:none">הרשמה</a>'; document.getElementById('loginBtn').innerText=isRegMode?'הרשמה ←':'המשך ←'; }
+
+async function handleLogin(){
+  const email=document.getElementById('loginEmail').value.trim().toLowerCase();
+  if(!email){ uiAlert('loginAlert','חסר אימייל'); return; }
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true; btn.innerHTML='<div class="loader"></div>';
+
+  // Admin check
+  if(email===ADMIN_EMAIL.toLowerCase()||email==="admin"){
+    const passField=document.getElementById('loginPassField');
+    if(passField.style.display==='none'){ passField.style.display='block'; btn.disabled=false; btn.innerText='כניסה ←'; return; }
+    const pass=document.getElementById('loginPass').value;
+    const cfg=await getAdminPass();
+    if(pass===cfg.pass){ localStorage.setItem('xnet_user',ADMIN_EMAIL); showAdmin(); }
+    else{ uiAlert('loginAlert','קוד שגוי'); btn.disabled=false; btn.innerText='כניסה ←'; }
+    return;
+  }
+
+  if(isRegMode){
+    // Register
+    const name=document.getElementById('loginName').value.trim();
+    const phone=document.getElementById('loginPhone').value.trim();
+    if(!name){ uiAlert('loginAlert','חסר שם'); btn.disabled=false; btn.innerText='הרשמה ←'; return; }
+    const data={name,phone,email,registered_at:new Date().toISOString(),base_sites_enabled:true,google_search_enabled:true,allowed_domains:["meny0583285502.github.io"],requests:{pause:null,uninstall_requested:false,uninstall_approved:false,site_request:null}};
+    try{
+      await ghPut("profiles/"+safeEmail(email)+".json",JSON.stringify(data,null,2),null,"New user: "+name);
+      localStorage.setItem('xnet_user',email);
+      openPlatformModal();
+      showUser(email,data,"");
+    }catch(e){ uiAlert('loginAlert','שגיאה: '+e.message); btn.disabled=false; btn.innerText='הרשמה ←'; }
+    return;
+  }
+
+  // Existing user login
+  try{
+    const{sha,data}=await fetchProfile(email);
+    localStorage.setItem('xnet_user',email);
+    showUser(email,data,sha);
+  }catch(e){ uiAlert('loginAlert','מזהה לא נמצא. משתמש חדש? לחץ הרשמה'); btn.disabled=false; btn.innerText='המשך ←'; }
+}
+
+// ── Show views ──
+function showWelcome(){ document.getElementById('welcomeScreen').style.display='flex'; document.getElementById('userApp').style.display='none'; document.getElementById('adminApp').style.display='none'; }
+function showUser(email,data,sha){
+  currentUserEmail=email; currentUser=data; currentUserSha=sha;
+  document.getElementById('welcomeScreen').style.display='none';
+  document.getElementById('userApp').style.display='flex';
+  document.getElementById('adminApp').style.display='none';
+  document.getElementById('userSidebarName').innerText=data.name||email;
+  renderUserData();
+}
+function showAdmin(){
+  document.getElementById('welcomeScreen').style.display='none';
+  document.getElementById('userApp').style.display='none';
+  document.getElementById('adminApp').style.display='flex';
+  loadAdminUsers();
+  loadPendingRequests();
+}
+function logout(){ localStorage.removeItem('xnet_user'); location.reload(); }
+
+// ── Render user ──
+// ── App buttons ──
+const ALLOWED_APPS = {
+  telegram: { name: 'Telegram', icon: '✈️', ips: ['149.154.160.0/20','91.108.4.0/22','91.108.8.0/22','91.108.56.0/22','95.161.64.0/20'] },
+  whatsapp: { name: 'WhatsApp', icon: '💬', ips: ['157.240.0.0/16','31.13.64.0/18','185.60.216.0/22'] },
+  store:    { name: 'Microsoft Store', icon: '🏪', exe: '%SystemRoot%\WinStore.App.exe' },
+};
+
+function renderAppButtons(){
+  const allowed = currentUser.allowed_apps || [];
+  const container = document.getElementById('appButtons');
+  if(!container) return;
+  container.innerHTML = '';
+  Object.entries(ALLOWED_APPS).forEach(([key, app]) => {
+    if(allowed.includes(key)){
+      container.innerHTML += `<button class="btn btn-success btn-sm" onclick="openApp('${key}')">
+        ${app.icon} ${app.name} — לחץ לפתיחה
+      </button>`;
+    }
+  });
+  if(!allowed.length) container.innerHTML = '<span style="font-size:0.82rem;color:var(--text3)">אין אפליקציות מיוחדות מורשות</span>';
+}
+
+function openApp(key){
+  const app = ALLOWED_APPS[key];
+  if(!app) return;
+  // Download VBS that opens firewall for this app
+  const ps = [
+    `$app = '${key}'`,
+    `if($app -eq 'telegram') { New-NetFirewallRule -DisplayName "XNET-Allow-Telegram-Temp" -Direction Outbound -Action Allow -RemoteAddress @('${(app.ips||[]).join("','")}') -Protocol Any -Profile Any -EA SilentlyContinue | Out-Null }`,
+    `if($app -eq 'whatsapp') { New-NetFirewallRule -DisplayName "XNET-Allow-WhatsApp-Temp" -Direction Outbound -Action Allow -RemoteAddress @('${(app.ips||[]).join("','")}') -Protocol Any -Profile Any -EA SilentlyContinue | Out-Null }`,
+    `Write-Host "${app.name} opened for 2 hours"`,
+    `Start-Sleep 7200`,
+    `Remove-NetFirewallRule -DisplayName "XNET-Allow-${key}-Temp" -EA SilentlyContinue`
+  ].join("\r\n");
+  let utf16=""; for(let i=0;i<ps.length;i++){const c=ps.charCodeAt(i);utf16+=String.fromCharCode(c&0xff,(c>>8)&0xff);}
+  const enc=btoa(utf16);
+  const vbs=[
+    'Set s=CreateObject("Shell.Application")',
+    `s.ShellExecute "powershell.exe","-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand ${enc}","","runas",0`,
+    'Set s=Nothing'
+  ].join("\r\n");
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([vbs],{type:'text/plain'}));
+  a.download=`open_${key}.vbs`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function renderUserData(){
+  const d=currentUser;
+  // Pause banner
+  const banner=document.getElementById('userPauseBanner');
+  if(d.requests?.pause?.until){
+    const until=new Date(d.requests.pause.until);
+    if(until>new Date()){
+      const min=Math.ceil((until-new Date())/60000);
+      banner.style.display='block';
+      banner.innerText=`⏳ מושהה עד ${until.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})} (עוד ${min} דקות)`;
+    } else banner.style.display='none';
+  } else banner.style.display='none';
+
+  // Sites list
+  const ul=document.getElementById('userSitesList'); ul.innerHTML='';
+  const domains=d.allowed_domains||[];
+  document.getElementById('uDomainCount').innerText=domains.length;
+  domains.forEach(item=>{
+    const[url,name]=item.split('|');
+    ul.innerHTML+=`<li class="domain-item"><span>${url}${name?` <span style="color:var(--text3);font-size:0.78rem">— ${name}</span>`:''}</span></li>`;
+  });
+  if(!domains.length) ul.innerHTML='<li class="domain-item" style="color:var(--text3)">אין אתרים אישיים</li>';
+
+  renderAppButtons();
+  document.getElementById('userFlags').innerText=`בסיסי: ${d.base_sites_enabled?'✅':'❌'}  |  גוגל: ${d.google_search_enabled?'✅':'❌'}`;
+
+  if(d.requests?.uninstall_approved){
+    document.getElementById('btnUninstallApproved').disabled=false;
+    document.getElementById('uninstallMsg').className='alert alert-success';
+    document.getElementById('uninstallMsg').innerText='✅ אושרה הסרה. לחץ הורד עדכון למעלה.';
+  }
+}
+
+// ── User actions ──
+function sendSiteRequest(){
+  const url=fmtDomain(document.getElementById('reqUrl').value);
+  const reason=document.getElementById('reqReason').value;
+  if(!url) return;
+  // Save to localStorage - no GitHub commit - admin sees in dashboard
+  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+  requests.push({type:'site',url,reason,email:currentUserEmail,date:new Date().toISOString()});
+  localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
+  document.getElementById('reqDone').style.display='block';
+  document.getElementById('reqUrl').value='';
+  document.getElementById('reqReason').value='';
+}
+function sendSiteEmail(){
+  const url=fmtDomain(document.getElementById('reqUrl').value);
+  const reason=document.getElementById('reqReason').value;
+  if(!url) return;
+  // Also save to localStorage
+  sendSiteRequest();
+  // And send email
+  window.open('https://mail.google.com/mail/?view=cm&to='+ADMIN_EMAIL+'&su='+encodeURIComponent('בקשת פתיחה: '+url)+'&body='+encodeURIComponent('משתמש: '+currentUserEmail+'\nאתר: '+url+(reason?'\nסיבה: '+reason:'')));
+}
+function requestPause(method){
+  const time=document.getElementById('pauseTime').value, reason=document.getElementById('pauseReason').value;
+  if(method==='email'){ window.open('https://mail.google.com/mail/?view=cm&to='+ADMIN_EMAIL+'&su='+encodeURIComponent('בקשת השהיה '+time+' דקות')+'&body='+encodeURIComponent(reason)); return; }
+  // Save to localStorage - no GitHub commit
+  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+  requests.push({type:'pause',time,reason,email:currentUserEmail,date:new Date().toISOString()});
+  localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
+  uiAlert('userAlert','✅ נשלח למנהל','success');
+}
+async function requestUninstall(method){
+  if(method==='email'){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת הסרה`); return; }
+  if(!currentUser.requests) currentUser.requests={};
+  currentUser.requests.uninstall_requested=true;
+  try{ currentUserSha=await saveProfile(currentUserEmail,currentUser,currentUserSha,"Uninstall request"); uiAlert('userAlert','✅ נשלח למנהל','success'); }
+  catch(e){ uiAlert('userAlert','שגיאה'); }
+}
+
+// ── Admin users ──
+async function loadAdminUsers(){
+  document.getElementById('usersLoading').style.display='block';
+  document.getElementById('usersTable').style.display='none';
+  try{
+    const files=(await ghGet("profiles")).filter(f=>f.name.endsWith('.json'));
+    let total=0,active=0,pending=0;
+    const tbody=document.getElementById('usersBody'); tbody.innerHTML='';
+    for(const f of files){
+      const raw=await fetch(f.url,{headers:{Authorization:"token "+GH_TOKEN,"User-Agent":"XNET"}});
+      const d=await raw.json();
+      const data=JSON.parse(b64d(d.content));
+      const email=f.name.replace('_at_','@').replace(/_dot_/g,'.').replace('.json','');
+      total++;
+      const hasPending=data.requests&&(data.requests.pause_request||data.requests.site_request||data.requests.uninstall_requested);
+      if(hasPending) pending++;
+      const isPaused=data.requests?.pause?.until&&new Date(data.requests.pause.until)>new Date();
+      const lastUp=data.last_updated||'—';
+      // Check if active (sync in last 10 min)
+      const isActive=data.last_updated&&(Date.now()-new Date(data.last_updated).getTime())<10*60*1000;
+      if(isActive) active++;
+      tbody.innerHTML+=`<tr>
+        <td><b>${data.name||'—'}</b>${hasPending?' <span style="color:var(--red)">●</span>':''}</td>
+        <td style="color:var(--text3);font-size:0.8rem">${email}</td>
+        <td>${isPaused?`<span class="badge badge-yellow">מושהה</span>`:isActive?`<span class="badge badge-green">פעיל</span>`:`<span class="badge badge-red">לא מחובר</span>`}</td>
+        <td style="font-size:0.8rem;color:var(--text3)">${lastUp}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openEditUser('${email}','${f.sha}')">⚙️</button></td>
+      </tr>`;
+    }
+    document.getElementById('statTotal').innerText=total;
+    document.getElementById('statActive').innerText=active;
+    document.getElementById('statPending').innerText=pending;
+    document.getElementById('usersLoading').style.display='none';
+    document.getElementById('usersTable').style.display=total?'table':'none';
+  }catch(e){ document.getElementById('usersLoading').innerHTML=`<span style="color:var(--red)">שגיאה: ${e.message}</span>`; }
+}
+
+async function openEditUser(email,fileSha){
+  adminEditEmail=email; editModified=false;
+  document.getElementById('editUnsaved').classList.remove('show');
+  document.getElementById('editUserAlerts').innerHTML='<div style="text-align:center;padding:16px"><div class="loader"></div></div>';
+  openModal('editUserModal');
+  try{
+    const{sha,data}=await fetchProfile(email);
+    adminEditSha=sha; adminEditData=data;
+    document.getElementById('editUserTitle').innerText=data.name||email;
+    document.getElementById('editUserMeta').innerText=email;
+
+    // Info grid
+    const reg=data.registered_at?new Date(data.registered_at).toLocaleDateString('he-IL'):'—';
+    const sync=data.last_updated||'—';
+    const pc=data.device_name||'—';
+    const os=data.os_version||'—';
+    document.getElementById('editUserInfo').innerHTML=`
+      <div><span style="color:var(--text3)">הצטרף:</span> ${reg}</div>
+      <div><span style="color:var(--text3)">Sync אחרון:</span> ${sync}</div>
+      <div><span style="color:var(--text3)">מחשב:</span> ${pc}</div>
+      <div><span style="color:var(--text3)">מערכת:</span> ${os}</div>
+      <div><span style="color:var(--text3)">גרסה:</span> ${data.xnet_version||'—'}</div>
+      <div><span style="color:var(--text3)">ID:</span> ${data.email||email}</div>`;
+
+    document.getElementById('editUserAlerts').innerHTML='';
+    // Pending requests
+    if(data.requests?.site_request){
+      const req=data.requests.site_request;
+      document.getElementById('editUserAlerts').innerHTML+=`<div class="alert alert-info" style="display:flex;justify-content:space-between;align-items:center">
+        <span>🌐 בקשה: <b>${req.url}</b>${req.reason?' — '+req.reason:''}</span>
+        <div style="display:flex;gap:6px"><button class="btn btn-success btn-sm" onclick="adminApproveSite('${req.url}')">אשר</button><button class="btn btn-ghost btn-sm" onclick="adminDismissSite()">דחה</button></div>
+      </div>`;
+    }
+    if(data.requests?.pause_request){
+      const req=data.requests.pause_request;
+      document.getElementById('editUserAlerts').innerHTML+=`<div class="alert alert-warn" style="display:flex;justify-content:space-between;align-items:center">
+        <span>⏳ בקשת השהיה: <b>${req.time} דקות</b>${req.reason?' — '+req.reason:''}</span>
+        <button class="btn btn-success btn-sm" onclick="adminApprovePause(${req.time})">אשר</button>
+      </div>`;
+    }
+    if(data.requests?.uninstall_requested&&!data.requests?.uninstall_approved){
+      document.getElementById('editUserAlerts').innerHTML+=`<div class="alert alert-error" style="display:flex;justify-content:space-between;align-items:center">
+        <span>🗑️ בקשת הסרה</span>
+        <button class="btn btn-danger btn-sm" onclick="adminApproveUninstall()">אשר</button>
+      </div>`;
+    }
+    if(data.requests?.pause?.until&&new Date(data.requests.pause.until)>new Date()){
+      const until=new Date(data.requests.pause.until);
+      document.getElementById('editUserAlerts').innerHTML+=`<div class="alert alert-warn" style="display:flex;justify-content:space-between;align-items:center">
+        <span>⏳ מושהה עד ${until.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</span>
+        <button class="btn btn-ghost btn-sm" onclick="adminCancelPause()">בטל</button>
+      </div>`;
+    }
+
+    document.getElementById('eBase').checked=!!data.base_sites_enabled;
+    document.getElementById('eGoogle').checked=!!data.google_search_enabled;
+    document.getElementById('eAppTelegram').checked=!!(data.allowed_apps||[]).includes('telegram');
+    document.getElementById('eAppWhatsapp').checked=!!(data.allowed_apps||[]).includes('whatsapp');
+    document.getElementById('eAppStore').checked=!!(data.allowed_apps||[]).includes('store');
+    renderEditDomains();
+  }catch(e){ document.getElementById('editUserAlerts').innerHTML=`<div class="alert alert-error">שגיאה: ${e.message}</div>`; }
+}
+
+function renderEditDomains(){
+  const ul=document.getElementById('editDomainList'); ul.innerHTML='';
+  (adminEditData.allowed_domains||[]).forEach((item,i)=>{
+    const[url,name]=item.split('|');
+    ul.innerHTML+=`<li class="domain-item"><span>${url}${name?` <span style="color:var(--text3);font-size:0.78rem">(${name})</span>`:''}</span><button class="btn btn-danger btn-sm" onclick="removeEditDomain(${i})">✕</button></li>`;
+  });
+  if(!(adminEditData.allowed_domains||[]).length) ul.innerHTML='<li class="domain-item" style="color:var(--text3)">אין אתרים</li>';
+}
+
+function addEditDomain(){
+  const url=fmtDomain(document.getElementById('eDomainUrl').value), name=document.getElementById('eDomainName').value.trim();
+  if(!url) return;
+  if(!adminEditData.allowed_domains) adminEditData.allowed_domains=[];
+  const entry=name?`${url}|${name}`:url;
+  if(!adminEditData.allowed_domains.some(x=>x.split('|')[0]===url)) adminEditData.allowed_domains.push(entry);
+  document.getElementById('eDomainUrl').value=''; document.getElementById('eDomainName').value='';
+  renderEditDomains(); markUnsaved();
+}
+function removeEditDomain(i){ adminEditData.allowed_domains.splice(i,1); renderEditDomains(); markUnsaved(); }
+
+async function saveEditUser(){
+  adminEditData.base_sites_enabled=document.getElementById('eBase').checked;
+  adminEditData.google_search_enabled=document.getElementById('eGoogle').checked;
+  const apps=[];
+  if(document.getElementById('eAppTelegram').checked) apps.push('telegram');
+  if(document.getElementById('eAppWhatsapp').checked) apps.push('whatsapp');
+  if(document.getElementById('eAppStore').checked) apps.push('store');
+  adminEditData.allowed_apps=apps;
+  try{
+    adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Admin update");
+    editModified=false; document.getElementById('editUnsaved').classList.remove('show');
+    uiAlert('adminAlert','✅ נשמר','success');
+  }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
+}
+
+async function adminApproveSite(url){
+  const d=fmtDomain(url);
+  if(!adminEditData.allowed_domains) adminEditData.allowed_domains=[];
+  if(!adminEditData.allowed_domains.some(x=>x.split('|')[0]===d)) adminEditData.allowed_domains.push(d);
+  adminEditData.requests.site_request=null;
+  adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Approve site");
+  openEditUser(adminEditEmail,adminEditSha); loadAdminUsers();
+  uiAlert('adminAlert','✅ אושר — המשתמש צריך ללחוץ הורד עדכון','success');
+}
+async function adminDismissSite(){ adminEditData.requests.site_request=null; adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Dismiss site"); openEditUser(adminEditEmail,adminEditSha); loadAdminUsers(); }
+async function adminApprovePause(min){
+  if(!adminEditData.requests) adminEditData.requests={};
+  adminEditData.requests.pause={time:min,date:new Date().toISOString(),until:new Date(Date.now()+min*60000).toISOString()};
+  adminEditData.requests.pause_request=null;
+  adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Approve pause");
+  openEditUser(adminEditEmail,adminEditSha);
+}
+async function adminPause(){
+  const min=parseInt(document.getElementById('ePauseTime').value);
+  if(!adminEditData.requests) adminEditData.requests={};
+  adminEditData.requests.pause={time:min,date:new Date().toISOString(),until:new Date(Date.now()+min*60000).toISOString()};
+  adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Admin pause");
+  openEditUser(adminEditEmail,adminEditSha);
+}
+async function adminCancelPause(){
+  if(adminEditData.requests) adminEditData.requests.pause=null;
+  adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Cancel pause");
+  openEditUser(adminEditEmail,adminEditSha);
+}
+async function adminApproveUninstall(){
+  if(!confirm('לאשר הסרה?')) return;
+  if(!adminEditData.requests) adminEditData.requests={};
+  adminEditData.requests.uninstall_approved=true;
+  adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Approve uninstall");
+  closeModal('editUserModal'); loadAdminUsers();
+}
+async function adminDeleteUser(){
+  if(!confirm(`למחוק לצמיתות את ${adminEditEmail}?`)) return;
+  try{
+    await ghDelete("profiles/"+safeEmail(adminEditEmail)+".json",adminEditSha,"Delete user "+adminEditEmail);
+    closeModal('editUserModal'); loadAdminUsers();
+  }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
+}
+
+// ── Create user ──
+function openCreateUser(){ document.getElementById('cuName').value=''; document.getElementById('cuEmail').value=''; document.getElementById('cuPhone').value=''; document.getElementById('cuBase').checked=true; document.getElementById('cuGoogle').checked=true; document.getElementById('cuAlert').style.display='none'; openModal('createUserModal'); }
+async function createUser(){
+  const name=document.getElementById('cuName').value.trim(), email=document.getElementById('cuEmail').value.trim(), phone=document.getElementById('cuPhone').value.trim();
+  if(!name||!email){ uiAlert('cuAlert','חסר שם או אימייל'); return; }
+  const data={name,phone,email,registered_at:new Date().toISOString(),base_sites_enabled:document.getElementById('cuBase').checked,google_search_enabled:document.getElementById('cuGoogle').checked,allowed_domains:["meny0583285502.github.io"],requests:{pause:null,uninstall_requested:false,uninstall_approved:false,site_request:null}};
+  try{
+    await ghPut("profiles/"+safeEmail(email)+".json",JSON.stringify(data,null,2),null,"Create user "+name);
+    uiAlert('cuAlert','✅ נוצר!','success'); setTimeout(()=>{ closeModal('createUserModal'); loadAdminUsers(); },1200);
+  }catch(e){ uiAlert('cuAlert','שגיאה: '+e.message); }
+}
+
+// ── Base whitelist ──
+async function loadBase(){
+  document.getElementById('baseLoading').style.display='block';
+  document.getElementById('baseDomainList').innerHTML='';
+  try{
+    const d=await ghGet("base_whitelist.json");
+    baseSha=d.sha; baseData=JSON.parse(b64d(d.content));
+    renderBase();
+  }catch{ baseData={allowed_domains:[]}; renderBase(); }
+  document.getElementById('baseLoading').style.display='none';
+}
+function renderBase(){
+  const ul=document.getElementById('baseDomainList'); ul.innerHTML='';
+  (baseData.allowed_domains||[]).forEach((item,i)=>{
+    const[url,name]=item.split('|');
+    ul.innerHTML+=`<li class="domain-item"><span>${url}${name?` <span style="color:var(--text3);font-size:0.78rem">(${name})</span>`:''}</span><button class="btn btn-danger btn-sm" onclick="removeBase(${i})">✕</button></li>`;
+  });
+}
+function addBaseDomain(){
+  const url=fmtDomain(document.getElementById('newBaseUrl').value), name=document.getElementById('newBaseName').value.trim();
+  if(!url||!baseData) return;
+  if(!baseData.allowed_domains) baseData.allowed_domains=[];
+  const entry=name?`${url}|${name}`:url;
+  if(!baseData.allowed_domains.some(x=>x.split('|')[0]===url)){ baseData.allowed_domains.push(entry); }
+  document.getElementById('newBaseUrl').value=''; document.getElementById('newBaseName').value='';
+  renderBase(); baseModified=true; document.getElementById('baseUnsaved').classList.add('show');
+}
+function removeBase(i){ baseData.allowed_domains.splice(i,1); renderBase(); baseModified=true; document.getElementById('baseUnsaved').classList.add('show'); }
+function importBulk(){
+  const lines=document.getElementById('bulkImport').value.split('\n').map(l=>fmtDomain(l)).filter(Boolean);
+  if(!baseData) baseData={allowed_domains:[]};
+  lines.forEach(url=>{ if(!baseData.allowed_domains.some(x=>x.split('|')[0]===url)) baseData.allowed_domains.push(url); });
+  document.getElementById('bulkImport').value='';
+  renderBase(); baseModified=true; document.getElementById('baseUnsaved').classList.add('show');
+}
+async function saveBase(){
+  try{
+    baseData.last_updated=new Date().toISOString().split('T')[0];
+    baseSha=await ghPut("base_whitelist.json",JSON.stringify(baseData,null,2),baseSha,"Update base whitelist");
+    baseModified=false; document.getElementById('baseUnsaved').classList.remove('show');
+    uiAlert('adminAlert','✅ נשמר','success');
+  }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
+}
+
+// ── Password change ──
+function checkPwdStrength(){
+  const p=document.getElementById('newPass').value, bar=document.getElementById('pwdStrength');
+  const score=p.length>10?3:p.length>6?2:p.length>3?1:0;
+  const colors=['#f85149','#d29922','#3fb950','#4f8ef7'];
+  bar.style.background=colors[score]||'var(--border)'; bar.style.width=(score+1)*25+'%';
+}
+async function changePassword(){
+  const cur=document.getElementById('curPass').value, np=document.getElementById('newPass').value, np2=document.getElementById('newPass2').value;
+  if(np!==np2){ uiAlert('pwdAlert','הסיסמאות לא תואמות'); return; }
+  if(np.length<4){ uiAlert('pwdAlert','סיסמה קצרה מדי'); return; }
+  try{
+    let cfgSha=null, cfgData={password:np};
+    try{ const d=await ghGet("admin_config.json"); const c=JSON.parse(b64d(d.content)); if(c.password!==cur){ uiAlert('pwdAlert','סיסמה נוכחית שגויה'); return; } cfgSha=d.sha; }
+    catch{ if(cur!=="5502"){ uiAlert('pwdAlert','סיסמה נוכחית שגויה'); return; } }
+    await ghPut("admin_config.json",JSON.stringify(cfgData,null,2),cfgSha,"Update admin password");
+    uiAlert('pwdAlert','✅ סיסמה שונה!','success');
+    document.getElementById('curPass').value=''; document.getElementById('newPass').value=''; document.getElementById('newPass2').value='';
+    document.getElementById('pwdStrength').style.width='0';
+  }catch(e){ uiAlert('pwdAlert','שגיאה: '+e.message); }
+}
+
+// ── Platform / download ──
+let _dlEmail='';
+function openPlatformModal(email){ _dlEmail=email||currentUserEmail||localStorage.getItem('xnet_user')||''; openModal('platformModal'); }
+function downloadForPlatform(p){ closeModal('platformModal'); if(p==='windows') downloadVBS(_dlEmail); }
+function downloadVBS(email){
+  const ps=[
+    "$url='https://raw.githubusercontent.com/meny0583285502/X-NET/main/install.ps1'",
+    "$out=\"$env:TEMP\\xnet_install.ps1\"",
+    "try{Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing -EA Stop}catch{exit 1}",
+    `& $out -UserEmail '${email}' -Silent`
+  ].join("\r\n");
+  let utf16=""; for(let i=0;i<ps.length;i++){const c=ps.charCodeAt(i);utf16+=String.fromCharCode(c&0xff,(c>>8)&0xff);}
+  const enc=btoa(utf16);
+  const vbs=[
+    'Set s=CreateObject("Shell.Application")',
+    `s.ShellExecute "powershell.exe","-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand ${enc}","","runas",0`,
+    'Set s=Nothing'
+  ].join("\r\n");
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([vbs],{type:'text/plain'}));
+  a.download='XNET_Update.vbs';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ── Init ──
+window.onload=async function(){
+  const saved=localStorage.getItem('xnet_user');
+  const p=new URLSearchParams(location.search);
+  const urlUser=p.get('user');
+  const user=urlUser||saved;
+  if(!user){ showWelcome(); return; }
+  if(urlUser) localStorage.setItem('xnet_user',urlUser);
+  if(user.toLowerCase()===ADMIN_EMAIL.toLowerCase()){ showAdmin(); return; }
+  try{
+    const{sha,data}=await fetchProfile(user);
+    showUser(user,data,sha);
+  }catch{ showWelcome(); }
+};
+</script>
+
+
+
+
+<script src="./X-NET _ מערכת סינון גלישה_files/go-payment.js.הורדה" type="text/javascript" async=""></script>
+<script src="./X-NET _ מערכת סינון גלישה_files/popup-card-init.js.הורדה" type="text/javascript" async=""></script>
+<div style="position: fixed; width: 1px; height: 1px; margin: 0px; padding: 0px; overflow: hidden; top: -9999px; left: -9999px; z-index: 2147483647;"><div id="netfree-popup-window">
+    <div id="netfree-popup-window-main" class="h-position-right v-position-middle">
+        <span id="netfree-popup-window-hand-pull"></span>
+        <iframe id="netfree-popup-window-iframe" src="./X-NET _ מערכת סינון גלישה_files/index.html"></iframe>
+    </div>
+</div>
+</div></body><iframe src="./X-NET _ מערכת סינון גלישה_files/go-payment.html" style="height: 0px; width: 0px; display: none;"></iframe></html>
