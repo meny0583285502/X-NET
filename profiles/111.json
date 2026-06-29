@@ -14,7 +14,7 @@
       "date": "2026-06-29T12:19:56.000Z",
       "until": "2026-06-29T12:34:56.001Z"
     },
-    "uninstall_requested": false,
+    "uninstall_requested": true,
     "uninstall_approved": false,
     "site_request": null,
     "pause_request": null
