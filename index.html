@@ -237,6 +237,11 @@ tr:hover td { background: var(--surface2); }
     </div>
 
     <div id="upanel-sites" class="view active">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-header"><span class="card-title">🔓 פתיחת אפליקציות</span></div>
+        <p style="font-size:0.8rem;color:var(--text3);margin-bottom:12px">האפליקציות הבאות מותרות על ידי המנהל. לחץ להפעלת הרשאה:</p>
+        <div id="appButtons" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
       <div class="card">
         <div class="card-header"><span class="card-title">אתרים פתוחים</span><span id="uDomainCount" class="badge badge-blue">0</span></div>
         <ul id="userSitesList" class="domain-list"></ul>
@@ -338,6 +343,16 @@ tr:hover td { background: var(--surface2); }
       </div>
     </div>
 
+    <!-- Pending requests tab -->
+    <div id="apanel-requests" class="view">
+      <div class="page-title">בקשות ממתינות</div>
+      <div class="page-sub">בקשות שהמשתמשים שלחו — ללא קומיט עד שתאשר</div>
+      <div class="card" id="pendingRequestsCard">
+        <div id="pendingEmpty" style="text-align:center;padding:24px;color:var(--text3)">אין בקשות ממתינות</div>
+        <ul id="pendingList" class="domain-list"></ul>
+      </div>
+    </div>
+
     <!-- Base sites tab -->
     <div id="apanel-base" class="view">
       <div class="page-title">אתרים בסיסיים</div>
@@ -393,6 +408,7 @@ tr:hover td { background: var(--surface2); }
     <nav class="sidebar-nav">
       <div style="padding:6px 12px;font-size:0.7rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">ניהול</div>
       <a class="nav-item active" onclick="switchAdminTab('users',this)"><span class="icon">👥</span>משתמשים</a>
+      <a class="nav-item" onclick="switchAdminTab('requests',this)"><span class="icon">📩</span>בקשות <span id="pendingBadge" style="display:none;background:var(--red);color:#fff;border-radius:99px;padding:1px 6px;font-size:0.7rem;margin-right:4px">0</span></a>
       <a class="nav-item" onclick="switchAdminTab('base',this)"><span class="icon">🌍</span>אתרים בסיסיים</a>
       <a class="nav-item" onclick="switchAdminTab('settings',this)"><span class="icon">⚙️</span>הגדרות</a>
     </nav>
@@ -431,6 +447,14 @@ tr:hover td { background: var(--surface2); }
       <div class="toggle-row">
         <div class="toggle-info"><label>גוגל ו-YouTube</label><p>google.com + youtube.com</p></div>
         <label class="toggle"><input type="checkbox" id="eGoogle" onchange="markUnsaved()"><span class="toggle-slider"></span></label>
+      </div>
+      <div style="margin-top:12px">
+        <div style="font-size:0.8rem;font-weight:700;color:var(--text2);margin-bottom:8px">📱 אפליקציות מורשות</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.83rem;cursor:pointer"><input type="checkbox" id="eAppTelegram" onchange="markUnsaved()"> ✈️ Telegram</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.83rem;cursor:pointer"><input type="checkbox" id="eAppWhatsapp" onchange="markUnsaved()"> 💬 WhatsApp</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.83rem;cursor:pointer"><input type="checkbox" id="eAppStore" onchange="markUnsaved()"> 🏪 Store</label>
+        </div>
       </div>
     </div>
 
@@ -527,6 +551,62 @@ let editModified = false;
 let isRegMode = false;
 
 // ── Theme ──
+// ── Pending requests (localStorage) ──
+function loadPendingRequests(){
+  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+  const badge=document.getElementById('pendingBadge');
+  const list=document.getElementById('pendingList');
+  const empty=document.getElementById('pendingEmpty');
+  if(!list) return;
+  if(requests.length===0){ if(badge)badge.style.display='none'; if(empty)empty.style.display='block'; list.innerHTML=''; return; }
+  if(badge){ badge.style.display='inline'; badge.innerText=requests.length; }
+  if(empty) empty.style.display='none';
+  list.innerHTML='';
+  requests.forEach((req,i)=>{
+    const d=new Date(req.date).toLocaleString('he-IL');
+    list.innerHTML+=`<li class="domain-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <div style="display:flex;justify-content:space-between;width:100%">
+        <span>${req.type==='site'?'🌐 פתיחת אתר':'⏳ השהיה'}: <b>${req.type==='site'?req.url:req.time+' דקות'}</b></span>
+        <span style="font-size:0.75rem;color:var(--text3)">${req.email} | ${d}</span>
+      </div>
+      ${req.reason?`<span style="font-size:0.8rem;color:var(--text3)">סיבה: ${req.reason}</span>`:''}
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-success btn-sm" onclick="approvePendingRequest(${i})">✅ אשר</button>
+        <button class="btn btn-ghost btn-sm" onclick="dismissPendingRequest(${i})">✕ דחה</button>
+      </div>
+    </li>`;
+  });
+}
+
+async function approvePendingRequest(i){
+  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+  const req=requests[i];
+  if(!req) return;
+  try{
+    const{sha,data}=await fetchProfile(req.email);
+    if(req.type==='site'){
+      if(!data.allowed_domains) data.allowed_domains=[];
+      const d=fmtDomain(req.url);
+      if(!data.allowed_domains.some(x=>x.split('|')[0]===d)) data.allowed_domains.push(d);
+    } else if(req.type==='pause'){
+      if(!data.requests) data.requests={};
+      data.requests.pause={time:req.time,reason:req.reason,date:new Date().toISOString(),until:new Date(Date.now()+parseInt(req.time)*60000).toISOString()};
+    }
+    await saveProfile(req.email,data,sha,"Approve "+req.type);
+    requests.splice(i,1);
+    localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
+    loadPendingRequests();
+    uiAlert('adminAlert','✅ אושר ונשמר','success');
+  }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
+}
+
+function dismissPendingRequest(i){
+  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+  requests.splice(i,1);
+  localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
+  loadPendingRequests();
+}
+
 function toggleTheme() {
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   document.documentElement.setAttribute('data-theme', isLight ? '' : 'light');
@@ -554,6 +634,7 @@ function switchAdminTab(tab,el){
   document.getElementById('apanel-'+tab).classList.add('active');
   if(el) el.classList.add('active');
   if(tab==='base') loadBase();
+  if(tab==='requests') loadPendingRequests();
 }
 function markUnsaved(){ editModified=true; document.getElementById('editUnsaved').classList.add('show'); }
 
@@ -646,10 +727,58 @@ function showAdmin(){
   document.getElementById('userApp').style.display='none';
   document.getElementById('adminApp').style.display='flex';
   loadAdminUsers();
+  loadPendingRequests();
 }
 function logout(){ localStorage.removeItem('xnet_user'); location.reload(); }
 
 // ── Render user ──
+// ── App buttons ──
+const ALLOWED_APPS = {
+  telegram: { name: 'Telegram', icon: '✈️', ips: ['149.154.160.0/20','91.108.4.0/22','91.108.8.0/22','91.108.56.0/22','95.161.64.0/20'] },
+  whatsapp: { name: 'WhatsApp', icon: '💬', ips: ['157.240.0.0/16','31.13.64.0/18','185.60.216.0/22'] },
+  store:    { name: 'Microsoft Store', icon: '🏪', exe: '%SystemRoot%\WinStore.App.exe' },
+};
+
+function renderAppButtons(){
+  const allowed = currentUser.allowed_apps || [];
+  const container = document.getElementById('appButtons');
+  if(!container) return;
+  container.innerHTML = '';
+  Object.entries(ALLOWED_APPS).forEach(([key, app]) => {
+    if(allowed.includes(key)){
+      container.innerHTML += `<button class="btn btn-success btn-sm" onclick="openApp('${key}')">
+        ${app.icon} ${app.name} — לחץ לפתיחה
+      </button>`;
+    }
+  });
+  if(!allowed.length) container.innerHTML = '<span style="font-size:0.82rem;color:var(--text3)">אין אפליקציות מיוחדות מורשות</span>';
+}
+
+function openApp(key){
+  const app = ALLOWED_APPS[key];
+  if(!app) return;
+  // Download VBS that opens firewall for this app
+  const ps = [
+    `$app = '${key}'`,
+    `if($app -eq 'telegram') { New-NetFirewallRule -DisplayName "XNET-Allow-Telegram-Temp" -Direction Outbound -Action Allow -RemoteAddress @('${(app.ips||[]).join("','")}') -Protocol Any -Profile Any -EA SilentlyContinue | Out-Null }`,
+    `if($app -eq 'whatsapp') { New-NetFirewallRule -DisplayName "XNET-Allow-WhatsApp-Temp" -Direction Outbound -Action Allow -RemoteAddress @('${(app.ips||[]).join("','")}') -Protocol Any -Profile Any -EA SilentlyContinue | Out-Null }`,
+    `Write-Host "${app.name} opened for 2 hours"`,
+    `Start-Sleep 7200`,
+    `Remove-NetFirewallRule -DisplayName "XNET-Allow-${key}-Temp" -EA SilentlyContinue`
+  ].join("\r\n");
+  let utf16=""; for(let i=0;i<ps.length;i++){const c=ps.charCodeAt(i);utf16+=String.fromCharCode(c&0xff,(c>>8)&0xff);}
+  const enc=btoa(utf16);
+  const vbs=[
+    'Set s=CreateObject("Shell.Application")',
+    `s.ShellExecute "powershell.exe","-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand ${enc}","","runas",0`,
+    'Set s=Nothing'
+  ].join("\r\n");
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([vbs],{type:'text/plain'}));
+  a.download=`open_${key}.vbs`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
 function renderUserData(){
   const d=currentUser;
   // Pause banner
@@ -673,6 +802,7 @@ function renderUserData(){
   });
   if(!domains.length) ul.innerHTML='<li class="domain-item" style="color:var(--text3)">אין אתרים אישיים</li>';
 
+  renderAppButtons();
   document.getElementById('userFlags').innerText=`בסיסי: ${d.base_sites_enabled?'✅':'❌'}  |  גוגל: ${d.google_search_enabled?'✅':'❌'}`;
 
   if(d.requests?.uninstall_approved){
@@ -683,26 +813,31 @@ function renderUserData(){
 }
 
 // ── User actions ──
-async function sendSiteRequest(){
+function sendSiteRequest(){
   const url=fmtDomain(document.getElementById('reqUrl').value);
   const reason=document.getElementById('reqReason').value;
   if(!url) return;
-  // Send email only - no GitHub commit
-  const subject=encodeURIComponent('בקשת פתיחה: '+url);
-  const body=encodeURIComponent('משתמש: '+currentUserEmail+'\nאתר: '+url+(reason?'\nסיבה: '+reason:''));
-  window.open('https://mail.google.com/mail/?view=cm&to='+ADMIN_EMAIL+'&su='+subject+'&body='+body);
+  // Save to localStorage - no GitHub commit
+  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+  requests.push({type:'site',url,reason,email:currentUserEmail,date:new Date().toISOString()});
+  localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
   document.getElementById('reqDone').style.display='block';
   document.getElementById('reqUrl').value='';
   document.getElementById('reqReason').value='';
 }
-function sendSiteEmail(){ sendSiteRequest(); }
-async function requestPause(method){
+function sendSiteEmail(){
+  const url=fmtDomain(document.getElementById('reqUrl').value);
+  const reason=document.getElementById('reqReason').value;
+  window.open('https://mail.google.com/mail/?view=cm&to='+ADMIN_EMAIL+'&su='+encodeURIComponent('בקשת פתיחה: '+url)+'&body='+encodeURIComponent('משתמש: '+currentUserEmail+'\nאתר: '+url+(reason?'\nסיבה: '+reason:'')));
+}
+function requestPause(method){
   const time=document.getElementById('pauseTime').value, reason=document.getElementById('pauseReason').value;
-  if(method==='email'){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת השהיה ${time} דקות&body=${reason}`); return; }
-  if(!currentUser.requests) currentUser.requests={};
-  currentUser.requests.pause_request={time,reason,date:new Date().toISOString()};
-  try{ currentUserSha=await saveProfile(currentUserEmail,currentUser,currentUserSha,"Pause request"); uiAlert('userAlert','✅ נשלח למנהל','success'); }
-  catch(e){ uiAlert('userAlert','שגיאה'); }
+  if(method==='email'){ window.open('https://mail.google.com/mail/?view=cm&to='+ADMIN_EMAIL+'&su='+encodeURIComponent('בקשת השהיה '+time+' דקות')+'&body='+encodeURIComponent(reason)); return; }
+  // Save to localStorage - no GitHub commit
+  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+  requests.push({type:'pause',time,reason,email:currentUserEmail,date:new Date().toISOString()});
+  localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
+  uiAlert('userAlert','✅ נשלח למנהל','success');
 }
 async function requestUninstall(method){
   if(method==='email'){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת הסרה`); return; }
@@ -805,6 +940,9 @@ async function openEditUser(email,fileSha){
 
     document.getElementById('eBase').checked=!!data.base_sites_enabled;
     document.getElementById('eGoogle').checked=!!data.google_search_enabled;
+    document.getElementById('eAppTelegram').checked=!!(data.allowed_apps||[]).includes('telegram');
+    document.getElementById('eAppWhatsapp').checked=!!(data.allowed_apps||[]).includes('whatsapp');
+    document.getElementById('eAppStore').checked=!!(data.allowed_apps||[]).includes('store');
     renderEditDomains();
   }catch(e){ document.getElementById('editUserAlerts').innerHTML=`<div class="alert alert-error">שגיאה: ${e.message}</div>`; }
 }
@@ -832,6 +970,11 @@ function removeEditDomain(i){ adminEditData.allowed_domains.splice(i,1); renderE
 async function saveEditUser(){
   adminEditData.base_sites_enabled=document.getElementById('eBase').checked;
   adminEditData.google_search_enabled=document.getElementById('eGoogle').checked;
+  const apps=[];
+  if(document.getElementById('eAppTelegram').checked) apps.push('telegram');
+  if(document.getElementById('eAppWhatsapp').checked) apps.push('whatsapp');
+  if(document.getElementById('eAppStore').checked) apps.push('store');
+  adminEditData.allowed_apps=apps;
   try{
     adminEditSha=await saveProfile(adminEditEmail,adminEditData,adminEditSha,"Admin update");
     editModified=false; document.getElementById('editUnsaved').classList.remove('show');
