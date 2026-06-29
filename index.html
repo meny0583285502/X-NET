@@ -817,7 +817,7 @@ function sendSiteRequest(){
   const url=fmtDomain(document.getElementById('reqUrl').value);
   const reason=document.getElementById('reqReason').value;
   if(!url) return;
-  // Save to localStorage - no GitHub commit
+  // Save to localStorage - no GitHub commit - admin sees in dashboard
   const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
   requests.push({type:'site',url,reason,email:currentUserEmail,date:new Date().toISOString()});
   localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
@@ -828,6 +828,10 @@ function sendSiteRequest(){
 function sendSiteEmail(){
   const url=fmtDomain(document.getElementById('reqUrl').value);
   const reason=document.getElementById('reqReason').value;
+  if(!url) return;
+  // Also save to localStorage
+  sendSiteRequest();
+  // And send email
   window.open('https://mail.google.com/mail/?view=cm&to='+ADMIN_EMAIL+'&su='+encodeURIComponent('בקשת פתיחה: '+url)+'&body='+encodeURIComponent('משתמש: '+currentUserEmail+'\nאתר: '+url+(reason?'\nסיבה: '+reason:'')));
 }
 function requestPause(method){
