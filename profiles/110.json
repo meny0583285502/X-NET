@@ -19,7 +19,12 @@
     "pause": null,
     "uninstall_requested": false,
     "uninstall_approved": false,
-    "site_request": null
+    "site_request": null,
+    "pause_request": {
+      "time": "15",
+      "reason": "",
+      "date": "2026-06-29T11:31:41.398Z"
+    }
   },
   "last_updated": "2026-06-29 02:00:50"
 }
