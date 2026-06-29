@@ -15,6 +15,19 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 if (-not (Test-Path $DIR)) { New-Item $DIR -ItemType Directory -Force | Out-Null }
 $GH_TOKEN | Out-File "$DIR\gh_token.txt" -Encoding UTF8 -Force
 
+# Lock XNET dir - SYSTEM full access, Users read-only (no delete)
+try {
+    $acl = Get-Acl $DIR
+    $acl.SetAccessRuleProtection($true, $false)
+    # SYSTEM - full control
+    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("SYSTEM","FullControl","ContainerInherit,ObjectInherit","None","Allow")))
+    # Administrators - full control
+    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("Administrators","FullControl","ContainerInherit,ObjectInherit","None","Allow")))
+    # Users - read only, NO delete, NO write
+    $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("Users","ReadAndExecute","ContainerInherit,ObjectInherit","None","Allow")))
+    Set-Acl $DIR $acl -EA SilentlyContinue
+} catch {}
+
 $EmailFile = "$DIR\user.txt"
 if ($UserEmail)               { $UserEmail | Out-File $EmailFile -Encoding UTF8 -Force }
 elseif (Test-Path $EmailFile) { $UserEmail = (Get-Content $EmailFile -First 1).Trim() }
@@ -240,7 +253,7 @@ if (-not $Silent) { Write-Host "[+] uninstall.ps1 written." -ForegroundColor Gre
 $t = [System.Collections.Generic.List[string]]::new()
 $t.Add('$mutex=New-Object System.Threading.Mutex($false,"Global\XNET_TRAY_MUTEX")')
 $t.Add('if(-not $mutex.WaitOne(0,$false)){exit}')
-$t.Add('Add-Type -AssemblyName System.Windows.Forms,System.Drawing')
+$t.Add('Add-Type -AssemblyName System.Windows.Forms,System.Drawing,Microsoft.VisualBasic')
 $t.Add('$notify=New-Object System.Windows.Forms.NotifyIcon')
 $t.Add('$notify.Icon=[System.Drawing.SystemIcons]::Shield')
 $t.Add('$notify.Visible=$true; $notify.Text="X-NET Active"')
@@ -252,8 +265,13 @@ $t.Add('$r2=New-Object System.Windows.Forms.MenuItem "Open Dashboard"')
 $t.Add('$r2.add_Click({Start-Process "http://5.5.0.2"})')
 $t.Add('$r3=New-Object System.Windows.Forms.MenuItem "Open Log"')
 $t.Add('$r3.add_Click({if(Test-Path "C:\XNET\sync_log.txt"){Start-Process notepad "C:\XNET\sync_log.txt"}})')
-$t.Add('$r4=New-Object System.Windows.Forms.MenuItem "Exit"')
-$t.Add('$r4.add_Click({$notify.Visible=$false;[System.Windows.Forms.Application]::Exit()})')
+$t.Add('$r4=New-Object System.Windows.Forms.MenuItem "Exit (Admin only)"')
+$t.Add('$r4.add_Click({
+    $pw = [Microsoft.VisualBasic.Interaction]::InputBox("Enter admin password to exit X-NET:","X-NET","")
+    if($pw -eq (Get-Content "C:\XNET\gh_token.txt" -First 1 -EA SilentlyContinue).Trim().Substring(0,4)){
+        $notify.Visible=$false;[System.Windows.Forms.Application]::Exit()
+    } else { [System.Windows.Forms.MessageBox]::Show("Wrong password","X-NET") }
+})')
 $t.Add('$menu.MenuItems.Add($r1)|Out-Null;$menu.MenuItems.Add($r2)|Out-Null;$menu.MenuItems.Add($r3)|Out-Null;$menu.MenuItems.Add("-")|Out-Null;$menu.MenuItems.Add($r4)|Out-Null')
 $t.Add('$notify.ContextMenu=$menu; $notify.add_DoubleClick({Start-Process "http://5.5.0.2"})')
 $t.Add('$timer=New-Object System.Windows.Forms.Timer;$timer.Interval=30000')
@@ -274,6 +292,22 @@ schtasks /create /tn "XNET_DNS"     /tr "powershell.exe -WindowStyle Hidden -Exe
 schtasks /create /tn "XNET_Sync"    /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\sync.ps1`"" /sc minute /mo 3 /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
 schtasks /create /tn "XNET_Watcher" /tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DIR\watcher.ps1`"" /sc onstart /ru SYSTEM /rl HIGHEST /f 2>&1 | Out-Null
 if (-not $Silent) { Write-Host "[+] Tasks created." -ForegroundColor Green }
+
+# Protect tasks from non-admin deletion
+foreach ($task in @("XNET_DNS","XNET_Sync","XNET_Watcher")) {
+    $regPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\$task"
+    if (Test-Path $regPath) {
+        try {
+            $acl = Get-Acl $regPath
+            $acl.SetAccessRuleProtection($true, $false)
+            $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule("SYSTEM","FullControl","Allow")))
+            $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule("Administrators","FullControl","Allow")))
+            $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule("Users","ReadKey","Allow")))
+            Set-Acl $regPath $acl -EA SilentlyContinue
+        } catch {}
+    }
+}
+if (-not $Silent) { Write-Host "[+] Tasks protected from regular users." -ForegroundColor Green }
 
 # ==================================================
 # PHASE 7 - Startup + Launch
