@@ -9,14 +9,14 @@
     "meny0583285502.github.io"
   ],
   "requests": {
-    "pause": null,
+    "pause": {
+      "time": 15,
+      "date": "2026-06-29T12:19:56.000Z",
+      "until": "2026-06-29T12:34:56.001Z"
+    },
     "uninstall_requested": false,
     "uninstall_approved": false,
     "site_request": null,
-    "pause_request": {
-      "time": "15",
-      "reason": "",
-      "date": "2026-06-29T12:19:38.237Z"
-    }
+    "pause_request": null
   }
 }
