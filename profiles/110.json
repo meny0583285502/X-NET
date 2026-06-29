@@ -16,15 +16,15 @@
     "mitmachim.top"
   ],
   "requests": {
-    "pause": null,
+    "pause": {
+      "time": 15,
+      "date": "2026-06-29T11:31:55.045Z",
+      "until": "2026-06-29T11:46:55.045Z"
+    },
     "uninstall_requested": false,
     "uninstall_approved": false,
     "site_request": null,
-    "pause_request": {
-      "time": "15",
-      "reason": "",
-      "date": "2026-06-29T11:31:41.398Z"
-    }
+    "pause_request": null
   },
   "last_updated": "2026-06-29 02:00:50"
 }
