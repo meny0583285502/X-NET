@@ -1,0 +1,20 @@
+{
+  "name": "שלמה",
+  "email": "85502",
+  "registered_at": "2026-07-01T12:16:26.000Z",
+  "mode": "whitelist",
+  "google_search_enabled": true,
+  "base_sites_enabled": true,
+  "video_blocked": false,
+  "allowed_domains": [
+    "chat.google.com"
+  ],
+  "blocked_domains": [],
+  "requests": {
+    "pause": null,
+    "uninstall_approved": false,
+    "site_request": null,
+    "pause_request": null,
+    "uninstall_requested": false
+  }
+}
