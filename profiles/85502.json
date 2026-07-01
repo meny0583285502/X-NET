@@ -11,14 +11,10 @@
   ],
   "blocked_domains": [],
   "requests": {
-    "pause": {
-      "time": 15,
-      "date": "2026-07-01T12:17:21.561Z",
-      "until": "2026-07-01T12:32:21.561Z"
-    },
+    "pause": null,
     "uninstall_approved": false,
     "site_request": null,
     "pause_request": null,
-    "uninstall_requested": false
+    "uninstall_requested": true
   }
 }
