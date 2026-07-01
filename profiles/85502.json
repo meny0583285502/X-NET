@@ -18,11 +18,7 @@
     },
     "uninstall_approved": false,
     "site_request": null,
-    "pause_request": {
-      "type": "internet",
-      "requested_at": "2026-07-01T12:18:32Z",
-      "status": "pending"
-    },
+    "pause_request": null,
     "uninstall_requested": true
   }
 }
