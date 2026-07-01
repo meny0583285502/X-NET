@@ -381,6 +381,34 @@ tr:hover td { background: var(--surface2); }
       </div>
     </div>
 
+    <!-- Community (Neve Shalom) tab -->
+    <div id="apanel-community" class="view">
+      <div class="page-title">קהילת נווה שלום</div>
+      <div class="page-sub">רשימת האתרים המורשית לקהילה — נטענת ממצב Community</div>
+      <div id="communityUnsaved" class="unsaved-bar">
+        <span>⚠️ יש שינויים שלא נשמרו</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="loadCommunity()">בטל</button>
+          <button class="btn btn-success btn-sm" onclick="saveCommunity()">💾 שמור הכל</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">הוסף אתר</span></div>
+        <div class="input-row" style="margin-bottom:8px">
+          <input id="newCommunityUrl" placeholder="example.com">
+          <input id="newCommunityName" placeholder="שם (אופציונלי)" style="flex:2">
+          <button class="btn btn-primary btn-sm" onclick="addCommunityDomain()">+ הוסף</button>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>ייבוא מרשימה (שורה לכל אתר)</label>
+          <textarea id="bulkCommunityImport" placeholder="example.com&#10;another.com&#10;..."></textarea>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="importCommunityBulk()" style="margin-bottom:12px">📋 ייבא רשימה</button>
+        <div id="communityLoading" style="display:none;text-align:center;padding:12px"><div class="loader"></div></div>
+        <ul id="communityDomainList" class="domain-list"></ul>
+      </div>
+    </div>
+
     <!-- Settings tab -->
     <div id="apanel-settings" class="view">
       <div class="page-title">הגדרות מנהל</div>
@@ -410,6 +438,7 @@ tr:hover td { background: var(--surface2); }
       <a class="nav-item active" onclick="switchAdminTab('users',this)"><span class="icon">👥</span>משתמשים</a>
       <a class="nav-item" onclick="switchAdminTab('requests',this)"><span class="icon">📩</span>בקשות <span id="pendingBadge" style="display:none;background:var(--red);color:#fff;border-radius:99px;padding:1px 6px;font-size:0.7rem;margin-right:4px">0</span></a>
       <a class="nav-item" onclick="switchAdminTab('base',this)"><span class="icon">🌍</span>אתרים בסיסיים</a>
+      <a class="nav-item" onclick="switchAdminTab('community',this)"><span class="icon">🏘️</span>קהילת נו"ש</a>
       <a class="nav-item" onclick="switchAdminTab('settings',this)"><span class="icon">⚙️</span>הגדרות</a>
     </nav>
     <div class="sidebar-footer">
@@ -447,6 +476,18 @@ tr:hover td { background: var(--surface2); }
       <div class="toggle-row">
         <div class="toggle-info"><label>גוגל ו-YouTube</label><p>google.com + youtube.com</p></div>
         <label class="toggle"><input type="checkbox" id="eGoogle" onchange="markUnsaved()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info"><label>חסימת וידאו</label><p>נגני מדיה + YouTube</p></div>
+        <label class="toggle"><input type="checkbox" id="eVideoBlocked" onchange="markUnsaved()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row" style="border-bottom:none">
+        <div class="toggle-info"><label>מצב סינון</label><p>whitelist / blacklist / community</p></div>
+        <select id="eMode" onchange="markUnsaved()" style="background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:5px 10px;font-size:0.83rem">
+          <option value="whitelist">לבנה</option>
+          <option value="blacklist">שחורה</option>
+          <option value="community">נווה שלום</option>
+        </select>
       </div>
       <div style="margin-top:12px">
         <div style="font-size:0.8rem;font-weight:700;color:var(--text2);margin-bottom:8px">📱 אפליקציות מורשות</div>
@@ -552,59 +593,87 @@ let isRegMode = false;
 
 // ── Theme ──
 // ── Pending requests (localStorage) ──
-function loadPendingRequests(){
-  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
+async function loadPendingRequests(){
   const badge=document.getElementById('pendingBadge');
   const list=document.getElementById('pendingList');
   const empty=document.getElementById('pendingEmpty');
   if(!list) return;
-  if(requests.length===0){ if(badge)badge.style.display='none'; if(empty)empty.style.display='block'; list.innerHTML=''; return; }
-  if(badge){ badge.style.display='inline'; badge.innerText=requests.length; }
-  if(empty) empty.style.display='none';
-  list.innerHTML='';
-  requests.forEach((req,i)=>{
-    const d=new Date(req.date).toLocaleString('he-IL');
-    list.innerHTML+=`<li class="domain-item" style="flex-direction:column;align-items:flex-start;gap:6px">
-      <div style="display:flex;justify-content:space-between;width:100%">
-        <span>${req.type==='site'?'🌐 פתיחת אתר':'⏳ השהיה'}: <b>${req.type==='site'?req.url:req.time+' דקות'}</b></span>
-        <span style="font-size:0.75rem;color:var(--text3)">${req.email} | ${d}</span>
-      </div>
-      ${req.reason?`<span style="font-size:0.8rem;color:var(--text3)">סיבה: ${req.reason}</span>`:''}
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-success btn-sm" onclick="approvePendingRequest(${i})">✅ אשר</button>
-        <button class="btn btn-ghost btn-sm" onclick="dismissPendingRequest(${i})">✕ דחה</button>
-      </div>
-    </li>`;
-  });
+  list.innerHTML='<div style="text-align:center;padding:16px"><div class="loader"></div></div>';
+  try{
+    const files=(await ghGet("profiles")).filter(f=>f.name.endsWith('.json'));
+    const pending=[];
+    for(const f of files){
+      const raw=await fetch(f.url,{headers:{Authorization:"token "+GH_TOKEN,"User-Agent":"XNET"}});
+      const d=await raw.json();
+      const data=JSON.parse(b64d(d.content));
+      const email=f.name.replace('_at_','@').replace(/_dot_/g,'.').replace('.json','');
+      if(data.requests?.site_request&&data.requests.site_request.status==='pending')
+        pending.push({type:'site',email,sha:f.sha,req:data.requests.site_request,data,fileSha:d.sha});
+      if(data.requests?.pause_request&&data.requests.pause_request.status==='pending')
+        pending.push({type:'pause',email,sha:f.sha,req:data.requests.pause_request,data,fileSha:d.sha});
+      if(data.requests?.uninstall_requested&&!data.requests?.uninstall_approved)
+        pending.push({type:'uninstall',email,sha:f.sha,req:{},data,fileSha:d.sha});
+    }
+    if(pending.length===0){ if(badge)badge.style.display='none'; if(empty)empty.style.display='block'; list.innerHTML=''; return; }
+    if(badge){ badge.style.display='inline'; badge.innerText=pending.length; }
+    if(empty) empty.style.display='none';
+    list.innerHTML='';
+    window._pendingRequests=pending;
+    pending.forEach((p,i)=>{
+      const d=p.req.requested_at?new Date(p.req.requested_at).toLocaleString('he-IL'):'';
+      const label=p.type==='site'?`🌐 פתיחת אתר: <b>${p.req.domain}</b>`:
+                  p.type==='pause'?`⏳ השהיה: <b>${p.req.time} דקות</b>`:
+                  `🗑️ הסרת תוכנה`;
+      list.innerHTML+=`<li class="domain-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+        <div style="display:flex;justify-content:space-between;width:100%">
+          <span>${label}</span>
+          <span style="font-size:0.75rem;color:var(--text3)">${p.email} | ${d}</span>
+        </div>
+        ${p.req.reason?`<span style="font-size:0.8rem;color:var(--text3)">סיבה: ${p.req.reason}</span>`:''}
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-success btn-sm" onclick="approvePendingRequest(${i})">✅ אשר</button>
+          <button class="btn btn-ghost btn-sm" onclick="dismissPendingRequest(${i})">✕ דחה</button>
+        </div>
+      </li>`;
+    });
+  }catch(e){ list.innerHTML=`<div style="color:var(--red);padding:12px">שגיאה: ${e.message}</div>`; }
 }
 
 async function approvePendingRequest(i){
-  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
-  const req=requests[i];
-  if(!req) return;
+  const p=window._pendingRequests&&window._pendingRequests[i];
+  if(!p) return;
   try{
-    const{sha,data}=await fetchProfile(req.email);
-    if(req.type==='site'){
+    const{sha,data}=await fetchProfile(p.email);
+    if(p.type==='site'){
       if(!data.allowed_domains) data.allowed_domains=[];
-      const d=fmtDomain(req.url);
+      const d=fmtDomain(p.req.domain);
       if(!data.allowed_domains.some(x=>x.split('|')[0]===d)) data.allowed_domains.push(d);
-    } else if(req.type==='pause'){
+      if(data.requests) data.requests.site_request=null;
+    } else if(p.type==='pause'){
       if(!data.requests) data.requests={};
-      data.requests.pause={time:req.time,reason:req.reason,date:new Date().toISOString(),until:new Date(Date.now()+parseInt(req.time)*60000).toISOString()};
+      const min=p.req.time||30;
+      data.requests.pause={time:min,date:new Date().toISOString(),until:new Date(Date.now()+min*60000).toISOString()};
+      data.requests.pause_request=null;
+    } else if(p.type==='uninstall'){
+      if(!data.requests) data.requests={};
+      data.requests.uninstall_approved=true;
     }
-    await saveProfile(req.email,data,sha,"Approve "+req.type);
-    requests.splice(i,1);
-    localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
+    await saveProfile(p.email,data,sha,"Approve "+p.type);
+    uiAlert('adminAlert','✅ אושר ונשמר — המשתמש יקבל עדכון תוך 5 שניות','success');
     loadPendingRequests();
-    uiAlert('adminAlert','✅ אושר ונשמר','success');
   }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
 }
 
-function dismissPendingRequest(i){
-  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
-  requests.splice(i,1);
-  localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
-  loadPendingRequests();
+async function dismissPendingRequest(i){
+  const p=window._pendingRequests&&window._pendingRequests[i];
+  if(!p) return;
+  try{
+    const{sha,data}=await fetchProfile(p.email);
+    if(p.type==='site'&&data.requests) data.requests.site_request=null;
+    if(p.type==='pause'&&data.requests) data.requests.pause_request=null;
+    await saveProfile(p.email,data,sha,"Dismiss "+p.type);
+    loadPendingRequests();
+  }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
 }
 
 function toggleTheme() {
@@ -634,6 +703,7 @@ function switchAdminTab(tab,el){
   document.getElementById('apanel-'+tab).classList.add('active');
   if(el) el.classList.add('active');
   if(tab==='base') loadBase();
+  if(tab==='community') loadCommunity();
   if(tab==='requests') loadPendingRequests();
 }
 function markUnsaved(){ editModified=true; document.getElementById('editUnsaved').classList.add('show'); }
@@ -813,17 +883,26 @@ function renderUserData(){
 }
 
 // ── User actions ──
-function sendSiteRequest(){
+async function sendSiteRequest(){
   const url=fmtDomain(document.getElementById('reqUrl').value);
   const reason=document.getElementById('reqReason').value;
-  if(!url) return;
-  // Save to localStorage - no GitHub commit - admin sees in dashboard
-  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
-  requests.push({type:'site',url,reason,email:currentUserEmail,date:new Date().toISOString()});
-  localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
-  document.getElementById('reqDone').style.display='block';
-  document.getElementById('reqUrl').value='';
-  document.getElementById('reqReason').value='';
+  if(!url){ uiAlert('userAlert','הכנס כתובת אתר'); return; }
+  const btn=document.querySelector('#upanel-request .btn-primary');
+  if(btn){ btn.disabled=true; btn.innerHTML='<div class="loader"></div>'; }
+  try{
+    // Save directly to GitHub profile — no localStorage, no commit needed for request
+    if(!currentUser.requests) currentUser.requests={};
+    currentUser.requests.site_request={
+      domain:url, reason:reason||'',
+      requested_at:new Date().toISOString(), status:'pending'
+    };
+    currentUserSha=await saveProfile(currentUserEmail,currentUser,currentUserSha,"Site request: "+url);
+    document.getElementById('reqDone').style.display='block';
+    document.getElementById('reqUrl').value='';
+    document.getElementById('reqReason').value='';
+    uiAlert('userAlert','✅ הבקשה נשלחה למנהל','success');
+  }catch(e){ uiAlert('userAlert','שגיאה: '+e.message); }
+  if(btn){ btn.disabled=false; btn.innerHTML='📋 שלח למנהל'; }
 }
 function sendSiteEmail(){
   const url=fmtDomain(document.getElementById('reqUrl').value);
@@ -834,14 +913,18 @@ function sendSiteEmail(){
   // And send email
   window.open('https://mail.google.com/mail/?view=cm&to='+ADMIN_EMAIL+'&su='+encodeURIComponent('בקשת פתיחה: '+url)+'&body='+encodeURIComponent('משתמש: '+currentUserEmail+'\nאתר: '+url+(reason?'\nסיבה: '+reason:'')));
 }
-function requestPause(method){
+async function requestPause(method){
   const time=document.getElementById('pauseTime').value, reason=document.getElementById('pauseReason').value;
   if(method==='email'){ window.open('https://mail.google.com/mail/?view=cm&to='+ADMIN_EMAIL+'&su='+encodeURIComponent('בקשת השהיה '+time+' דקות')+'&body='+encodeURIComponent(reason)); return; }
-  // Save to localStorage - no GitHub commit
-  const requests=JSON.parse(localStorage.getItem('xnet_pending_requests')||'[]');
-  requests.push({type:'pause',time,reason,email:currentUserEmail,date:new Date().toISOString()});
-  localStorage.setItem('xnet_pending_requests',JSON.stringify(requests));
-  uiAlert('userAlert','✅ נשלח למנהל','success');
+  try{
+    if(!currentUser.requests) currentUser.requests={};
+    currentUser.requests.pause_request={
+      type:'internet', time:parseInt(time), reason:reason||'',
+      requested_at:new Date().toISOString(), status:'pending'
+    };
+    currentUserSha=await saveProfile(currentUserEmail,currentUser,currentUserSha,"Pause request: "+time+"min");
+    uiAlert('userAlert','✅ נשלח למנהל — ממתין לאישור','success');
+  }catch(e){ uiAlert('userAlert','שגיאה: '+e.message); }
 }
 async function requestUninstall(method){
   if(method==='email'){ window.open(`https://mail.google.com/mail/?view=cm&to=${ADMIN_EMAIL}&su=בקשת הסרה`); return; }
@@ -944,6 +1027,8 @@ async function openEditUser(email,fileSha){
 
     document.getElementById('eBase').checked=!!data.base_sites_enabled;
     document.getElementById('eGoogle').checked=!!data.google_search_enabled;
+    document.getElementById('eVideoBlocked').checked=!!data.video_blocked;
+    document.getElementById('eMode').value=data.mode||'whitelist';
     document.getElementById('eAppTelegram').checked=!!(data.allowed_apps||[]).includes('telegram');
     document.getElementById('eAppWhatsapp').checked=!!(data.allowed_apps||[]).includes('whatsapp');
     document.getElementById('eAppStore').checked=!!(data.allowed_apps||[]).includes('store');
@@ -974,6 +1059,8 @@ function removeEditDomain(i){ adminEditData.allowed_domains.splice(i,1); renderE
 async function saveEditUser(){
   adminEditData.base_sites_enabled=document.getElementById('eBase').checked;
   adminEditData.google_search_enabled=document.getElementById('eGoogle').checked;
+  adminEditData.video_blocked=document.getElementById('eVideoBlocked').checked;
+  adminEditData.mode=document.getElementById('eMode').value;
   const apps=[];
   if(document.getElementById('eAppTelegram').checked) apps.push('telegram');
   if(document.getElementById('eAppWhatsapp').checked) apps.push('whatsapp');
@@ -1132,6 +1219,53 @@ function downloadVBS(email){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
+
+// ── Community (Neve Shalom) ──
+let communityData=null, communitySha='', communityModified=false;
+async function loadCommunity(){
+  document.getElementById('communityLoading').style.display='block';
+  document.getElementById('communityDomainList').innerHTML='';
+  try{
+    const d=await ghGet("community/neve_shalom.json");
+    communitySha=d.sha; communityData=JSON.parse(b64d(d.content));
+  }catch{ communityData={description:"קהילת נווה שלום",allowed_domains:[]}; communitySha=''; }
+  renderCommunity();
+  document.getElementById('communityLoading').style.display='none';
+}
+function renderCommunity(){
+  const ul=document.getElementById('communityDomainList'); ul.innerHTML='';
+  (communityData.allowed_domains||[]).forEach((item,i)=>{
+    const[url,name]=item.split('|');
+    ul.innerHTML+=`<li class="domain-item"><span>${url}${name?` <span style="color:var(--text3);font-size:0.78rem">(${name})</span>`:''}</span><button class="btn btn-danger btn-sm" onclick="removeCommunity(${i})">✕</button></li>`;
+  });
+}
+function addCommunityDomain(){
+  const url=fmtDomain(document.getElementById('newCommunityUrl').value), name=document.getElementById('newCommunityName').value.trim();
+  if(!url||!communityData) return;
+  if(!communityData.allowed_domains) communityData.allowed_domains=[];
+  const entry=name?`${url}|${name}`:url;
+  if(!communityData.allowed_domains.some(x=>x.split('|')[0]===url)) communityData.allowed_domains.push(entry);
+  document.getElementById('newCommunityUrl').value=''; document.getElementById('newCommunityName').value='';
+  renderCommunity(); communityModified=true; document.getElementById('communityUnsaved').classList.add('show');
+}
+function removeCommunity(i){ communityData.allowed_domains.splice(i,1); renderCommunity(); communityModified=true; document.getElementById('communityUnsaved').classList.add('show'); }
+function importCommunityBulk(){
+  const lines=document.getElementById('bulkCommunityImport').value.split('\n').map(l=>fmtDomain(l)).filter(Boolean);
+  if(!communityData) communityData={allowed_domains:[]};
+  lines.forEach(url=>{ if(!communityData.allowed_domains.some(x=>x.split('|')[0]===url)) communityData.allowed_domains.push(url); });
+  document.getElementById('bulkCommunityImport').value='';
+  renderCommunity(); communityModified=true; document.getElementById('communityUnsaved').classList.add('show');
+}
+async function saveCommunity(){
+  try{
+    communityData.last_updated=new Date().toISOString().split('T')[0];
+    communitySha=await ghPut("community/neve_shalom.json",JSON.stringify(communityData,null,2),communitySha||undefined,"Update community list");
+    communityModified=false; document.getElementById('communityUnsaved').classList.remove('show');
+    uiAlert('adminAlert','✅ נשמר','success');
+  }catch(e){ uiAlert('adminAlert','שגיאה: '+e.message); }
+}
+
+// ── Pending requests: now reads from GitHub profiles directly ──
 // ── Init ──
 window.onload=async function(){
   const saved=localStorage.getItem('xnet_user');
