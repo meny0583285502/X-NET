@@ -7,7 +7,8 @@
   "base_sites_enabled": false,
   "video_blocked": false,
   "allowed_domains": [
-    "chat.google.com"
+    "chat.google.com",
+    "accounts.google.com"
   ],
   "blocked_domains": [],
   "requests": {
@@ -24,5 +25,6 @@
       "status": "pending"
     },
     "uninstall_requested": false
-  }
+  },
+  "allowed_apps": []
 }
