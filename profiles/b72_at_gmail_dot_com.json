@@ -14,7 +14,11 @@
     "pause": null,
     "uninstall_approved": false,
     "site_request": null,
-    "pause_request": null,
+    "pause_request": {
+      "type": "internet",
+      "requested_at": "2026-07-06T14:26:35Z",
+      "status": "pending"
+    },
     "uninstall_requested": false
   }
 }
