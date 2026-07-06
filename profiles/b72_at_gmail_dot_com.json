@@ -1,0 +1,20 @@
+{
+  "name": "נח",
+  "email": "b72@gmail.com",
+  "registered_at": "2026-07-06T14:16:25.000Z",
+  "mode": "whitelist",
+  "google_search_enabled": false,
+  "base_sites_enabled": false,
+  "video_blocked": false,
+  "allowed_domains": [
+    "chat.google.com"
+  ],
+  "blocked_domains": [],
+  "requests": {
+    "pause": null,
+    "uninstall_approved": false,
+    "site_request": null,
+    "pause_request": null,
+    "uninstall_requested": false
+  }
+}
