@@ -385,6 +385,51 @@ tr:hover td { background: var(--surface2); }
     <div id="apanel-community" class="view">
       <div class="page-title">קהילת נווה שלום</div>
       <div class="page-sub">רשימת האתרים המורשית לקהילה — נטענת ממצב Community</div>
+
+      <div class="card" style="border:1px solid rgba(210,153,34,.35)">
+        <div class="card-header"><span class="card-title">⚡ פעולות גורפות — כל המשתמשים בבת אחת</span></div>
+        <div class="page-sub" style="margin-top:-6px">משנה הגדרה לכל המשתמשים הרשומים במערכת יחד. פעולה בלתי הפיכה מיידית ברגע האישור.</div>
+
+        <div class="field" style="margin-top:10px">
+          <label>קבע מצב סינון לכולם</label>
+          <div class="input-row">
+            <select id="bulkMode" style="flex:2">
+              <option value="whitelist">לבנה</option>
+              <option value="blacklist">שחורה</option>
+              <option value="community">נווה שלום</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="bulkApplyMode()">החל על כולם</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>השהיה לכולם</label>
+          <div class="input-row">
+            <select id="bulkPauseTime" style="flex:2">
+              <option value="15">15 דקות</option>
+              <option value="30">30 דקות</option>
+              <option value="60">שעה</option>
+              <option value="180">3 שעות</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="bulkPauseAll()">⏳ השהה לכולם</button>
+            <button class="btn btn-ghost btn-sm" onclick="bulkCancelPauseAll()">בטל השהיה לכולם</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>עקיפה גורפת (מתעלמת ממצב הסינון האישי, חוץ מחוק ברזל)</label>
+          <div class="input-row">
+            <button class="btn btn-danger btn-sm" onclick="bulkForceMode('block_all')">🔒 חסום הכל לכולם</button>
+            <button class="btn btn-success btn-sm" onclick="bulkForceMode('open_all')">🔓 פתח הכל לכולם</button>
+            <button class="btn btn-ghost btn-sm" onclick="bulkForceMode(null)">↩️ בטל עקיפה — חזרה למצב האישי</button>
+          </div>
+        </div>
+        <div id="bulkProgress" style="display:none;margin-top:10px">
+          <div class="loader"></div> <span id="bulkProgressText"></span>
+        </div>
+        <div id="bulkAlert" class="alert" style="display:none;margin-top:10px"></div>
+      </div>
+
       <div id="communityUnsaved" class="unsaved-bar">
         <span>⚠️ יש שינויים שלא נשמרו</span>
         <div style="display:flex;gap:8px">
@@ -731,6 +776,63 @@ async function ghDelete(path,sha,msg){
 function safeEmail(e){ return e.replace("@","_at_").replace(/\./g,"_dot_"); }
 async function fetchProfile(email){ const d=await ghGet("profiles/"+safeEmail(email)+".json"); return{sha:d.sha,data:JSON.parse(b64d(d.content))}; }
 async function saveProfile(email,data,sha,msg){ return ghPut("profiles/"+safeEmail(email)+".json",JSON.stringify(data,null,2),sha,msg||"update"); }
+
+// ── Community-wide bulk actions ──
+function _bulkEmailFromFilename(name){
+  return name.replace('_at_','@').replace(/_dot_/g,'.').replace('.json','');
+}
+async function _bulkForEachUser(mutateFn, label){
+  const prog=document.getElementById('bulkProgress'), ptxt=document.getElementById('bulkProgressText');
+  const alertEl=document.getElementById('bulkAlert');
+  alertEl.style.display='none'; prog.style.display='block';
+  try{
+    const files=(await ghGet("profiles")).filter(f=>f.name.endsWith('.json'));
+    let done=0, failed=0;
+    for(const f of files){
+      ptxt.innerText=`${label}: ${done+1}/${files.length}`;
+      try{
+        const email=_bulkEmailFromFilename(f.name);
+        const {sha,data}=await fetchProfile(email);
+        mutateFn(data);
+        await saveProfile(email,data,sha,label);
+      }catch(e){ failed++; console.error(f.name,e); }
+      done++;
+    }
+    prog.style.display='none';
+    alertEl.className='alert alert-success'; alertEl.style.display='block';
+    alertEl.innerText=`בוצע על ${done-failed} משתמשים${failed?`, ${failed} נכשלו`:''}. השינוי ייקלט אצל כל משתמש תוך עד 30 שניות מהפעם הבאה שהשירות שלו יתחבר.`;
+  }catch(e){
+    prog.style.display='none';
+    alertEl.className='alert alert-error'; alertEl.style.display='block';
+    alertEl.innerText='שגיאה: '+e.message;
+  }
+}
+function bulkApplyMode(){
+  const mode=document.getElementById('bulkMode').value;
+  if(!confirm(`לקבוע מצב סינון "${mode}" לכל המשתמשים? פעולה מיידית.`)) return;
+  _bulkForEachUser(d=>{ d.mode=mode; }, `Bulk set mode=${mode}`);
+}
+function bulkPauseAll(){
+  const min=parseInt(document.getElementById('bulkPauseTime').value,10);
+  if(!confirm(`להשהות סינון לכולם ל-${min} דקות?`)) return;
+  _bulkForEachUser(d=>{
+    if(!d.requests) d.requests={};
+    d.requests.pause={time:min,date:new Date().toISOString(),until:new Date(Date.now()+min*60000).toISOString()};
+    d.requests.pause_request=null;
+  }, `Bulk pause ${min}m`);
+}
+function bulkCancelPauseAll(){
+  if(!confirm('לבטל השהיה לכל המשתמשים?')) return;
+  _bulkForEachUser(d=>{ if(d.requests) d.requests.pause=null; }, 'Bulk cancel pause');
+}
+function bulkForceMode(mode){
+  const labels={block_all:'לחסום את כל האתרים',open_all:'לפתוח את כל האתרים',null:'לבטל את העקיפה הגורפת'};
+  if(!confirm(`בטוח ${labels[mode===null?'null':mode]} לכל המשתמשים? זה גובר על ההגדרה האישית של כל אחד (חוץ מחוק ברזל).`)) return;
+  _bulkForEachUser(d=>{
+    if(!d.requests) d.requests={};
+    d.requests.force_mode=mode;
+  }, `Bulk force_mode=${mode}`);
+}
 
 // ── Admin password ──
 async function getAdminPass(){
