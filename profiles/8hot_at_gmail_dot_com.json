@@ -1,0 +1,20 @@
+{
+  "name": "ישר",
+  "email": "8hot@gmail.com",
+  "registered_at": "2026-07-09T14:45:10.000Z",
+  "mode": "blacklist",
+  "google_search_enabled": true,
+  "base_sites_enabled": true,
+  "video_blocked": true,
+  "allowed_domains": [],
+  "blocked_domains": [
+    "queue.call2all.co.il"
+  ],
+  "requests": {
+    "pause": null,
+    "uninstall_approved": false,
+    "site_request": null,
+    "pause_request": null,
+    "uninstall_requested": false
+  }
+}
