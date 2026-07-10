@@ -1,0 +1,18 @@
+{
+  "name": "חח",
+  "email": "is77t@gmail.com",
+  "registered_at": "2026-07-10T12:31:51.000Z",
+  "mode": "blacklist",
+  "google_search_enabled": true,
+  "base_sites_enabled": false,
+  "video_blocked": true,
+  "allowed_domains": [],
+  "blocked_domains": [],
+  "requests": {
+    "pause": null,
+    "uninstall_approved": false,
+    "site_request": null,
+    "pause_request": null,
+    "uninstall_requested": false
+  }
+}
