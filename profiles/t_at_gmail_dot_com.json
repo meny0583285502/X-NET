@@ -16,7 +16,17 @@
     "pause": null,
     "uninstall_approved": false,
     "site_request": null,
-    "pause_request": null,
+    "pause_request": {
+      "type": "internet",
+      "requested_at": "2026-07-10T12:40:00Z",
+      "status": "pending"
+    },
     "uninstall_requested": false
-  }
+  },
+  "app_requests": [
+    "c:\\users\\user\\appdata\\local\\microsoft\\onedrive\\26.113.0614.0004\\filecoauth.exe",
+    "c:\\windows\\system32\\backgroundtaskhost.exe",
+    "c:\\windows\\systemapps\\microsoft.windows.search_cw5n1h2txyewy\\searchapp.exe",
+    "c:\\program files (x86)\\microsoft\\edgewebview\\application\\150.0.4078.48\\msedgewebview2.exe"
+  ]
 }
