@@ -13,6 +13,9 @@
     "uninstall_approved": false,
     "site_request": null,
     "pause_request": null,
-    "uninstall_requested": false
-  }
+    "uninstall_requested": true
+  },
+  "app_requests": [
+    "c:\\program files (x86)\\microsoft\\edgewebview\\application\\150.0.4078.48\\msedgewebview2.exe"
+  ]
 }
