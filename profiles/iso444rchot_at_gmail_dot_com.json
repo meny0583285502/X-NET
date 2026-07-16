@@ -17,5 +17,9 @@
     "uninstall_requested": false,
     "site_request": null,
     "pause_request": null
-  }
+  },
+  "google_search_enabled": false,
+  "video_blocked": false,
+  "mode": "blacklist",
+  "allowed_apps": []
 }
