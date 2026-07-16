@@ -1,0 +1,21 @@
+{
+  "name": "שמ",
+  "email": "iso444rchot@gmail.com",
+  "registered_at": "2026-07-16T10:47:57.000Z",
+  "filter_mode": "whitelist",
+  "base_sites_enabled": true,
+  "google_enabled": true,
+  "youtube_enabled": false,
+  "allowed_domains": [
+    "queue.call2all.co.il"
+  ],
+  "blocked_domains": [],
+  "community": "",
+  "requests": {
+    "pause": null,
+    "uninstall_approved": false,
+    "uninstall_requested": false,
+    "site_request": null,
+    "pause_request": null
+  }
+}
