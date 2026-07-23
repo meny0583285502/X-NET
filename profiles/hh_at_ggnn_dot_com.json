@@ -1,0 +1,14 @@
+{
+  "name": "שלמה זלמן",
+  "email": "hh@ggnn.com",
+  "mode": "community",
+  "google_search_enabled": true,
+  "base_sites_enabled": true,
+  "allowed_domains": [],
+  "requests": {
+    "pause": null,
+    "uninstall_requested": false,
+    "uninstall_approved": false,
+    "site_request": null
+  }
+}
